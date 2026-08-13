@@ -13,7 +13,21 @@ from config import load_config
 
 PORT = 8000
 DIR = os.path.dirname(os.path.abspath(__file__))
-FRONTEND_DIST = os.path.abspath(os.path.join(DIR, "..", "frontend", "dist"))
+FRONTEND_DIST = os.path.abspath(os.path.join(DIR, "..", "frontend", "build"))
+LOG_DIR = os.path.join(DIR, "logs")
+LOG_PATH = os.path.join(LOG_DIR, "ocpp.log")
+
+
+def read_local_log(log_path, max_lines=1000):
+    lines = []
+    if os.path.exists(log_path):
+        try:
+            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                all_lines = f.readlines()
+                lines = all_lines[-max_lines:]
+        except Exception as e:
+            print(f"[LOCAL LOGS] Error reading: {e}")
+    return "".join(lines)
 
 CONFIG = {}
 TOKEN = None
@@ -39,7 +53,7 @@ def build_auth_headers(api_key, platform, token, tenant_uuid, tenant_pk):
     return headers
 
 
-def login():
+def login(email=None, password=None):
     global TOKEN, TENANT_UUID, TENANT_PK, LOGIN_AT
     url = f"{CONFIG['BASE_URL']}/api/v1/login"
     headers = {
@@ -47,12 +61,14 @@ def login():
         "Platform": CONFIG["PLATFORM"],
         "Content-Type": "application/json",
     }
+    email = email if email is not None else CONFIG["EMAIL"]
+    password = password if password is not None else CONFIG["PASSWORD"]
     payload = {
-        "email": CONFIG["EMAIL"],
-        "password": CONFIG["PASSWORD"],
+        "email": email,
+        "password": password,
         "recaptchaResponse": "string",
     }
-    print(f"[LOGIN] Tentando login automatico para {CONFIG['EMAIL']}")
+    print(f"[LOGIN] Tentando login automatico para {email}")
     for attempt in range(6):
         try:
             r = requests.post(url, headers=headers, json=payload, timeout=15)
@@ -64,7 +80,7 @@ def login():
                 TENANT_PK = data["user"]["tenant_pk"]
                 LOGIN_AT = time.strftime("%Y-%m-%d %H:%M:%S")
                 print(f"[LOGIN] Logado (token ok)")
-                return True
+                return data
             if r.status_code == 429:
                 wait = r.json().get("retryAfterSeconds", 60)
                 print(f"[LOGIN] Rate limited, esperando {wait}s")
@@ -90,11 +106,17 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/v1/local/health":
             return self._health()
+        if self.path == "/api/v1/local/logs":
+            return self._local_logs()
         if self.path.startswith("/api/"):
             return self._proxy("GET")
         return super().do_GET()
 
     def do_POST(self):
+        if self.path == "/login-proxy":
+            return self._handle_login()
+        if self.path == "/set-session":
+            return self._set_session()
         if self.path.startswith("/api/"):
             return self._proxy("POST")
         self.send_error(405)
@@ -113,6 +135,34 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             "tenant_uuid": TENANT_UUID,
             "logged_at": LOGIN_AT,
         })
+
+    def _local_logs(self):
+        content = read_local_log(LOG_PATH)
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(content.encode("utf-8"))
+
+    def _handle_login(self):
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        body = json.loads(self.rfile.read(length).decode()) if length else {}
+        email = body.get("email")
+        password = body.get("password")
+        data = login(email, password)
+        if data:
+            self._json_response(data)
+        else:
+            self._json_response({"error": "Falha no login apos tentativas"}, 401)
+
+    def _set_session(self):
+        global TOKEN, TENANT_UUID, TENANT_PK
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        body = json.loads(self.rfile.read(length).decode()) if length else {}
+        TOKEN = body.get("token")
+        TENANT_UUID = body.get("tenant_uuid")
+        TENANT_PK = body.get("tenant_pk")
+        self._json_response({"ok": True})
 
     def _proxy(self, method):
         if not TOKEN:
@@ -173,19 +223,17 @@ def abrir_navegador():
 
 def main():
     global CONFIG
+    os.makedirs(LOG_DIR, exist_ok=True)
     try:
         CONFIG = load_config()
     except ValueError as e:
         print(f"ERRO: {e}")
         sys.exit(1)
 
-    if not login():
-        print("[AVISO] Login inicial falhou; o proxy tentara relogar sob demanda.")
-
     threading.Thread(target=abrir_navegador, daemon=True).start()
 
     with ThreadedServer(("", PORT), ProxyHandler) as httpd:
-        print(f"Monitor Pós-venda rodando em http://localhost:{PORT}")
+        print(f"PósMobi rodando em http://localhost:{PORT}")
         print(f"Health: http://localhost:{PORT}/api/v1/local/health")
         print("Pressione Ctrl+C para parar.")
         try:
