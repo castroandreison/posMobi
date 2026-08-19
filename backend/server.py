@@ -11,11 +11,36 @@ import requests
 
 from config import load_config
 
+BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+)
+
 PORT = 8000
 DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIST = os.path.abspath(os.path.join(DIR, "..", "frontend", "build"))
 LOG_DIR = os.path.join(DIR, "logs")
 LOG_PATH = os.path.join(LOG_DIR, "ocpp.log")
+DATA_DIR = os.path.join(DIR, "data")
+FIRMWARE_DATA_PATH = os.path.join(DATA_DIR, "firmware.json")
+
+
+def load_firmware_data():
+    if os.path.exists(FIRMWARE_DATA_PATH):
+        try:
+            with open(FIRMWARE_DATA_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict) and "blocks" in data and "modelLinks" in data:
+                return data
+        except Exception as e:
+            print(f"[FIRMWARE] Erro ao ler dados: {e}")
+    return {"blocks": [], "modelLinks": {}}
+
+
+def save_firmware_data(data):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(FIRMWARE_DATA_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def read_local_log(log_path, max_lines=1000):
@@ -42,6 +67,7 @@ def build_auth_headers(api_key, platform, token, tenant_uuid, tenant_pk):
         "Platform": platform,
         "Content-Type": "application/json",
         "Accept": "*/*",
+        "User-Agent": BROWSER_UA,
     }
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -60,6 +86,7 @@ def login(email=None, password=None):
         "Api-Key": CONFIG["API_KEY"],
         "Platform": CONFIG["PLATFORM"],
         "Content-Type": "application/json",
+        "User-Agent": BROWSER_UA,
     }
     email = email if email is not None else CONFIG["EMAIL"]
     password = password if password is not None else CONFIG["PASSWORD"]
@@ -108,6 +135,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             return self._health()
         if self.path == "/api/v1/local/logs":
             return self._local_logs()
+        if self.path == "/api/v1/local/firmware":
+            return self._json_response(load_firmware_data())
         if self.path.startswith("/api/"):
             return self._proxy("GET")
         return super().do_GET()
@@ -117,14 +146,28 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             return self._handle_login()
         if self.path == "/set-session":
             return self._set_session()
+        if self.path == "/api/v1/local/firmware":
+            return self._save_firmware()
         if self.path.startswith("/api/"):
             return self._proxy("POST")
+        self.send_error(405)
+
+    def do_PUT(self):
+        if self.path.startswith("/api/"):
+            return self._proxy("PUT")
+        self.send_error(405)
+
+    def do_DELETE(self):
+        if self.path.startswith("/api/v1/local/firmware/"):
+            return self._delete_firmware_block()
+        if self.path.startswith("/api/"):
+            return self._proxy("DELETE")
         self.send_error(405)
 
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "*")
         self.end_headers()
 
@@ -143,6 +186,49 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(content.encode("utf-8"))
+
+    def _read_body_json(self):
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        body = self.rfile.read(length) if length > 0 else b"{}"
+        try:
+            return json.loads(body.decode("utf-8"))
+        except Exception:
+            return {}
+
+    def _save_firmware(self):
+        body = self._read_body_json()
+        blocks = body.get("blocks")
+        model_links = body.get("modelLinks")
+        if not isinstance(blocks, list):
+            return self._json_response({"error": "blocks deve ser uma lista"}, 400)
+        if not isinstance(model_links, dict):
+            return self._json_response({"error": "modelLinks deve ser um objeto"}, 400)
+        block_ids = {b.get("id") for b in blocks if isinstance(b, dict) and b.get("id")}
+        for model, block_id in model_links.items():
+            if block_id not in block_ids:
+                return self._json_response(
+                    {"error": f"Modelo '{model}' aponta para bloco inexistente: {block_id}"}, 400
+                )
+        save_firmware_data({"blocks": blocks, "modelLinks": model_links})
+        print("[FIRMWARE] Dados salvos")
+        self._json_response({"ok": True, "blocks": blocks, "modelLinks": model_links})
+
+    def _delete_firmware_block(self):
+        block_id = self.path[len("/api/v1/local/firmware/"):]
+        block_id = block_id.split("?")[0]
+        if not block_id:
+            return self._json_response({"error": "id do bloco obrigatorio"}, 400)
+        data = load_firmware_data()
+        before = len(data["blocks"])
+        data["blocks"] = [b for b in data["blocks"] if b.get("id") != block_id]
+        if len(data["blocks"]) == before:
+            return self._json_response({"error": f"Bloco nao encontrado: {block_id}"}, 404)
+        data["modelLinks"] = {
+            m: bid for m, bid in data["modelLinks"].items() if bid != block_id
+        }
+        save_firmware_data(data)
+        print(f"[FIRMWARE] Bloco removido: {block_id}")
+        self._json_response({"ok": True, **data})
 
     def _handle_login(self):
         length = int(self.headers.get("Content-Length", 0) or 0)
@@ -173,9 +259,15 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0) or 0)
         body = self.rfile.read(length) if length > 0 else None
 
+        platform = CONFIG["PLATFORM"]
+        if "/api/v1/firmware-update-history" in self.path:
+            platform = "MOBILE"
+        if "/api/v1/operations/" in self.path:
+            platform = "MOBILE"
+
         for _ in range(3):
             headers = build_auth_headers(
-                CONFIG["API_KEY"], CONFIG["PLATFORM"], TOKEN, TENANT_UUID, TENANT_PK
+                CONFIG["API_KEY"], platform, TOKEN, TENANT_UUID, TENANT_PK
             )
             try:
                 print(f"[PROXY] {method} {target}")

@@ -1,145 +1,90 @@
 import React, { useState } from 'react';
+import { login as apiLogin } from '../../api/client.js';
+import { Button } from '../../components/ui/button.jsx';
 
 const Login = ({ onLogin }) => {
-    const [email, setEmail] = useState('cve-api@intelbras.com.br');
-    const [password, setPassword] = useState('cve-api');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('andreison.castro@intelbras.com.br');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-        try {
-            const r = await fetch('/login-proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
-            });
-            const data = await r.json().catch(() => ({}));
-            if (r.status === 200) {
-                onLogin({
-                    token: data.token,
-                    tenant_uuid: data.user?.tenant_uuid,
-                    tenant_pk: data.user?.tenant_pk,
-                });
-            } else {
-                setError(data.error || `Falha no login (HTTP ${r.status})`);
-            }
-        } catch (e) {
-            setError(e.message || 'Falha no login');
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiLogin(email, password);
+      onLogin({
+        token: data.token,
+        tenant_uuid: data.user?.tenant_uuid,
+        tenant_pk: data.user?.tenant_pk,
+      });
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Falha no login';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <div
-            className="d-flex align-items-center justify-content-center"
-            style={{
-                minHeight: '100vh',
-                background: 'linear-gradient(135deg, #000000 0%, #1a1a1a 100%)',
-                position: 'relative',
-            }}
-        >
-            <div
-                className="card w-100"
-                style={{
-                    maxWidth: 400,
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(100,167,11,0.2)',
-                    borderRadius: 16,
-                    backdropFilter: 'blur(12px)',
-                }}
-            >
-                <div className="card-body text-center p-4">
-                    <div className="mb-3">
-                        <div
-                            style={{
-                                fontSize: 40,
-                                fontWeight: 800,
-                                color: '#64A70B',
-                                letterSpacing: 4,
-                                textShadow: '0 0 20px rgba(100,167,11,0.3)',
-                            }}
-                        >
-                            PósMobi
-                        </div>
-                        <div
-                            className="text-uppercase"
-                            style={{ fontSize: 12, letterSpacing: 4, color: '#888' }}
-                        >
-                            Plataforma de Monitoramento
-                        </div>
-                    </div>
-                    <form onSubmit={handleSubmit} autoComplete="off">
-                        <div className="mb-3 text-start">
-                            <label
-                                className="text-uppercase"
-                                style={{ fontSize: 12, letterSpacing: 1, color: '#888' }}
-                            >
-                                Email
-                            </label>
-                            <input
-                                type="email"
-                                className="form-control"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                style={{
-                                    background: 'rgba(0,0,0,0.4)',
-                                    color: '#e0e0e0',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                }}
-                            />
-                        </div>
-                        <div className="mb-3 text-start">
-                            <label
-                                className="text-uppercase"
-                                style={{ fontSize: 12, letterSpacing: 1, color: '#888' }}
-                            >
-                                Senha
-                            </label>
-                            <input
-                                type="password"
-                                className="form-control"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                style={{
-                                    background: 'rgba(0,0,0,0.4)',
-                                    color: '#e0e0e0',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                }}
-                            />
-                        </div>
-                        {error && (
-                            <div
-                                className="text-danger mb-3"
-                                style={{ fontSize: 13, minHeight: 20 }}
-                            >
-                                {error}
-                            </div>
-                        )}
-                        <button
-                            type="submit"
-                            className="btn w-100"
-                            disabled={loading}
-                            style={{
-                                background: 'linear-gradient(135deg, rgba(100,167,11,0.15), rgba(100,167,11,0.05))',
-                                border: '1px solid #64A70B',
-                                color: '#64A70B',
-                                letterSpacing: 2,
-                                fontWeight: 700,
-                            }}
-                        >
-                            {loading ? 'CONECTANDO...' : 'CONECTAR'}
-                        </button>
-                    </form>
-                </div>
-            </div>
+  const inputClass =
+    'h-10 w-full rounded-lg border border-border bg-zinc-950 px-3 text-sm text-foreground placeholder:text-muted focus:outline-2 focus:outline-primary';
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-black via-zinc-950 to-zinc-900 px-4">
+      <div className="w-full max-w-sm rounded-2xl border border-primary/20 bg-surface/40 p-8 shadow-lg backdrop-blur">
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-black tracking-[0.2em] text-primary">
+            PósMobi
+          </h1>
+          <p className="mt-1 text-[11px] uppercase tracking-[0.3em] text-muted">
+            Plataforma de Monitoramento
+          </p>
         </div>
-    );
+
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
+          <div className="space-y-1.5">
+            <label className="text-xs uppercase tracking-widest text-muted">
+              Email
+            </label>
+            <input
+              type="email"
+              className={inputClass}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs uppercase tracking-widest text-muted">
+              Senha
+            </label>
+            <input
+              type="password"
+              className={inputClass}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          {error && (
+            <p className="min-h-5 text-xs text-danger" role="alert">
+              {error}
+            </p>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading}
+          >
+            {loading ? 'CONECTANDO...' : 'CONECTAR'}
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
 };
 
 export default Login;

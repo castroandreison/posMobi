@@ -1,0 +1,74 @@
+{
+  "blocks": [
+    {
+      "id": "blk_ac022k_ae_34_i_",
+      "name": "Business 22kW",
+      "gateway": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200220B/EESP32WIIICustom0_Intelbras_V43.0.074.bin",
+        "version": "V43.0.074"
+      },
+      "mcu": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200220B/AC022K-AE-34%28I%29_V1.10.325.hex",
+        "version": "V1.10.325"
+      },
+      "completa": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200220B/AC022K-AE-34%28I%29_V1.10.325.enfs",
+        "version": "V1.10.225"
+      }
+    },
+    {
+      "id": "blk_ac7000_ae_34_itb",
+      "name": "Business 7,4kW",
+      "gateway": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200074B/EESP32WIIICustom0_Intelbras_V43.0.074%20%284%29.bin",
+        "version": "V43.0.074"
+      },
+      "mcu": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200074B/AC7000-AE-34-ITB_V1.0.265.hex",
+        "version": "V1.0.265"
+      },
+      "completa": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200074B/AC7000-AE-34-ITB_V1.0.265.enfs",
+        "version": "V1.0.265"
+      }
+    },
+    {
+      "id": "blk_ac7000_ae_25_i_",
+      "name": "City 7,4kW",
+      "gateway": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200074C/EESP32WIIICustom0_Intelbras_V43.0.074%20%284%29.bin",
+        "version": "FW V43.0.074"
+      },
+      "mcu": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200074C/AC7000-AE-25_I__V1.0.265.hex",
+        "version": "V1.0.265"
+      },
+      "completa": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200074C/AC7000-AE-25_I__V1.0.265.enfs",
+        "version": "V1.0.265"
+      }
+    },
+    {
+      "id": "blk_ac011k_ae_25_itb",
+      "name": "City 11kW",
+      "gateway": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200110C/EESP32WIIICustom0_Intelbras_V43.0.66.bin",
+        "version": "V43.0.66"
+      },
+      "mcu": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200110C/AC011K-AE-25-ITB_V1.8.602.hex",
+        "version": "V1.8.602"
+      },
+      "completa": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200110C/AC011K-AE-25-ITB_V1.8.602.enfs",
+        "version": "V1.8.602"
+      }
+    }
+  ],
+  "modelLinks": {
+    "AC022K-AE-34(I)": "blk_ac022k_ae_34_i_",
+    "AC7000-AE-34-ITB": "blk_ac7000_ae_34_itb",
+    "AC7000-AE-25(I)": "blk_ac7000_ae_25_i_",
+    "AC011K-AE-25-ITB": "blk_ac011k_ae_25_itb"
+  }
+}
