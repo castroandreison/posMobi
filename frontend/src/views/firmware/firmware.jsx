@@ -12,6 +12,8 @@ import {
   saveFirmwareBlocks,
   deleteFirmwareBlock,
   isSessionExpired,
+  stationStatus,
+  onlineStatus,
 } from '../../api/client.js';
 import { Card, CardHeader, CardBody } from '../../components/ui/card.jsx';
 import { Button } from '../../components/ui/button.jsx';
@@ -50,9 +52,16 @@ const FirmwareView = () => {
   const [stations, setStations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [tenant, setTenant] = useState(null);
-  const [model, setModel] = useState('');
-  const [chargeBoxFilter, setChargeBoxFilter] = useState('');
-  const [descFilter, setDescFilter] = useState('');
+  const [filters, setFilters] = useState({
+    chargeBoxId: '',
+    description: '',
+    model: '',
+    status: '',
+    online: '',
+    firmware: '',
+    city: '',
+    active: '',
+  });
   const [selected, setSelected] = useState(new Set());
   const [sending, setSending] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -125,9 +134,16 @@ const FirmwareView = () => {
 
   const handleAccountChange = (acct) => {
     setTenant(acct);
-    setModel('');
-    setChargeBoxFilter('');
-    setDescFilter('');
+    setFilters({
+      chargeBoxId: '',
+      description: '',
+      model: '',
+      status: '',
+      online: '',
+      firmware: '',
+      city: '',
+      active: '',
+    });
     setSelected(new Set());
     if (acct?.pk) loadStations(acct.pk);
     else setStations([]);
@@ -138,16 +154,47 @@ const FirmwareView = () => {
     [stations]
   );
 
+  const statusOptions = useMemo(
+    () => [...new Set(stations.map((s) => stationStatus(s).label))].sort(),
+    [stations]
+  );
+  const onlineOptions = useMemo(
+    () =>
+      [...new Set(stations.map((s) => onlineStatus(s.lastHeartbeatTimestamp).label))].sort(),
+    [stations]
+  );
+
   const filtered = useMemo(() => {
-    const q = chargeBoxFilter.trim().toLowerCase();
-    const d = descFilter.trim().toLowerCase();
+    const q = (v) => v.toLowerCase();
     return stations.filter((s) => {
-      if (model && (s.chargePointModel || 'Sem modelo') !== model) return false;
-      if (q && !(s.chargeBoxId || '').toLowerCase().includes(q)) return false;
-      if (d && !(s.description || '').toLowerCase().includes(d)) return false;
+      const st = stationStatus(s);
+      const onl = onlineStatus(s.lastHeartbeatTimestamp);
+      const addr = s.address || {};
+      if (
+        filters.chargeBoxId &&
+        !q(s.chargeBoxId || '').includes(q(filters.chargeBoxId))
+      )
+        return false;
+      if (
+        filters.description &&
+        !q(s.description || '').includes(q(filters.description))
+      )
+        return false;
+      if (filters.model && (s.chargePointModel || 'Sem modelo') !== filters.model)
+        return false;
+      if (filters.status && st.label !== filters.status) return false;
+      if (filters.online && onl.label !== filters.online) return false;
+      if (filters.firmware && !q(s.fwVersion || '').includes(q(filters.firmware)))
+        return false;
+      const cityUf = `${addr.city || ''}/${addr.state || ''}`;
+      if (filters.city && !q(cityUf).includes(q(filters.city))) return false;
+      if (filters.active) {
+        const isActive = s.active === false ? 'Inativo' : 'Ativo';
+        if (isActive !== filters.active) return false;
+      }
       return true;
     });
-  }, [stations, model, chargeBoxFilter, descFilter]);
+  }, [stations, filters]);
 
   const idOf = (s) => s.chargeBoxPk || s.chargeBoxId;
   const allSelected =
@@ -430,6 +477,24 @@ const FirmwareView = () => {
       <Card>
         <CardHeader>
           <h2 className="text-sm font-semibold text-muted">Filtros</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              setFilters({
+                chargeBoxId: '',
+                description: '',
+                model: '',
+                status: '',
+                online: '',
+                firmware: '',
+                city: '',
+                active: '',
+              })
+            }
+          >
+            Limpar
+          </Button>
         </CardHeader>
         <CardBody className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
@@ -443,28 +508,15 @@ const FirmwareView = () => {
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs uppercase tracking-widest text-muted">Modelo</label>
-            <select
-              className={`${inputClass} w-full`}
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-            >
-              <option value="">Todos os modelos</option>
-              {models.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1.5">
             <label className="text-xs uppercase tracking-widest text-muted">ChargeBox ID</label>
             <input
               type="text"
               className={`${inputClass} w-full`}
-              placeholder="Buscar por ChargeBox ID..."
-              value={chargeBoxFilter}
-              onChange={(e) => setChargeBoxFilter(e.target.value)}
+              placeholder="Buscar por ID..."
+              value={filters.chargeBoxId}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, chargeBoxId: e.target.value }))
+              }
             />
           </div>
           <div className="space-y-1.5">
@@ -473,9 +525,90 @@ const FirmwareView = () => {
               type="text"
               className={`${inputClass} w-full`}
               placeholder="Buscar por descrição..."
-              value={descFilter}
-              onChange={(e) => setDescFilter(e.target.value)}
+              value={filters.description}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, description: e.target.value }))
+              }
             />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs uppercase tracking-widest text-muted">Modelo</label>
+            <select
+              className={`${inputClass} w-full`}
+              value={filters.model}
+              onChange={(e) => setFilters((f) => ({ ...f, model: e.target.value }))}
+            >
+              <option value="">Todos</option>
+              {models.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs uppercase tracking-widest text-muted">Status</label>
+            <select
+              className={`${inputClass} w-full`}
+              value={filters.status}
+              onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+            >
+              <option value="">Todos</option>
+              {statusOptions.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs uppercase tracking-widest text-muted">Online</label>
+            <select
+              className={`${inputClass} w-full`}
+              value={filters.online}
+              onChange={(e) => setFilters((f) => ({ ...f, online: e.target.value }))}
+            >
+              <option value="">Todos</option>
+              {onlineOptions.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs uppercase tracking-widest text-muted">Firmware</label>
+            <input
+              type="text"
+              className={`${inputClass} w-full`}
+              placeholder="Buscar por versão..."
+              value={filters.firmware}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, firmware: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs uppercase tracking-widest text-muted">Cidade/UF</label>
+            <input
+              type="text"
+              className={`${inputClass} w-full`}
+              placeholder="Ex.: São José/SC..."
+              value={filters.city}
+              onChange={(e) => setFilters((f) => ({ ...f, city: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs uppercase tracking-widest text-muted">Ativo</label>
+            <select
+              className={`${inputClass} w-full`}
+              value={filters.active}
+              onChange={(e) => setFilters((f) => ({ ...f, active: e.target.value }))}
+            >
+              <option value="">Todos</option>
+              <option value="Ativo">Ativo</option>
+              <option value="Inativo">Inativo</option>
+            </select>
           </div>
         </CardBody>
       </Card>
@@ -518,6 +651,7 @@ const FirmwareView = () => {
                     <th className="px-4 py-2.5">Descrição</th>
                     <th className="px-4 py-2.5">Modelo</th>
                     <th className="px-4 py-2.5">Status</th>
+                    <th className="px-4 py-2.5">Status FW</th>
                     <th className="px-4 py-2.5">Firmware</th>
                     <th className="px-4 py-2.5">Gateway</th>
                   </tr>
@@ -544,6 +678,9 @@ const FirmwareView = () => {
                         <td className="px-4 py-2.5 font-semibold">{s.chargeBoxId}</td>
                         <td className="px-4 py-2.5">{s.description || '—'}</td>
                         <td className="px-4 py-2.5 text-muted">{s.chargePointModel || '—'}</td>
+                        <td className="px-4 py-2.5">
+                          <Badge tone={stationStatus(s).tone}>{stationStatus(s).label}</Badge>
+                        </td>
                         <td className="px-4 py-2.5">
                           {mon ? (
                             <Badge tone={fwStatusTone(mon.status)}>
@@ -609,15 +746,15 @@ const FirmwareView = () => {
 
       {modalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          className="fixed inset-0 z-50 bg-black/70 p-4 sm:p-6"
           onClick={() => setModalOpen(false)}
         >
           <div
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-xl"
+            className="mx-auto flex h-full w-full max-w-7xl flex-col rounded-2xl border border-border bg-surface shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold">URLs de Firmware</h2>
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <h2 className="text-lg font-bold">Firmware por Carregador</h2>
               <button
                 className="rounded-lg p-1.5 text-muted hover:bg-surface-muted hover:text-foreground"
                 onClick={() => setModalOpen(false)}
@@ -627,85 +764,95 @@ const FirmwareView = () => {
               </button>
             </div>
 
-            <div className="space-y-6">
+            <div className="flex-1 space-y-6 overflow-y-auto p-6">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Blocos de firmware</h3>
+                  <h3 className="text-sm font-semibold">Carregadores / Modelos</h3>
                   <Button variant="secondary" size="sm" onClick={addDraftBlock}>
                     <Plus size={14} />
-                    Novo bloco
+                    Novo carregador
                   </Button>
                 </div>
                 {draftBlocks.length === 0 && (
                   <p className="text-sm text-muted">
-                    Nenhum bloco cadastrado. Clique em "Novo bloco" para criar um.
+                    Nenhum carregador cadastrado. Clique em "Novo carregador" para criar um.
                   </p>
                 )}
-                {draftBlocks.map((b) => (
-                  <div
-                    key={b.id}
-                    className="space-y-3 rounded-xl border border-border bg-surface-muted/40 p-3"
-                  >
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        className={`${inputClass} w-full`}
-                        placeholder="Nome do bloco (ex.: Business 7kW)"
-                        value={b.name}
-                        onChange={(e) => updateDraftName(b.id, e.target.value)}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeDraftBlock(b.id)}
-                        title="Excluir bloco"
-                      >
-                        <Trash2 size={15} />
-                      </Button>
-                    </div>
-                    {FW_TYPES.map((t) => (
-                      <div
-                        key={t.key}
-                        className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_10rem]"
-                      >
-                        <div className="space-y-1">
-                          <label className="text-[11px] uppercase tracking-widest text-muted">
-                            URL {t.label}
-                          </label>
-                          <input
-                            type="text"
-                            className={`${inputClass} w-full`}
-                            value={b[t.key]?.url || ''}
-                            onChange={(e) => updateDraftBlock(b.id, t.key, 'url', e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[11px] uppercase tracking-widest text-muted">
-                            Versão FW
-                          </label>
-                          <input
-                            type="text"
-                            className={`${inputClass} w-full`}
-                            placeholder="Ex.: V1.0.265"
-                            value={b[t.key]?.version || ''}
-                            onChange={(e) =>
-                              updateDraftBlock(b.id, t.key, 'version', e.target.value)
-                            }
-                          />
-                        </div>
-                      </div>
-                    ))}
+                {draftBlocks.length > 0 && (
+                  <div className="overflow-x-auto rounded-xl border border-border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-surface-muted/40 text-left text-xs uppercase tracking-wider text-muted">
+                          <th className="px-3 py-2.5">Carregador / Modelo</th>
+                          {FW_TYPES.map((t) => (
+                            <th key={t.key} className="px-3 py-2.5">
+                              {t.label}
+                            </th>
+                          ))}
+                          <th className="w-10 px-3 py-2.5" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {draftBlocks.map((b) => (
+                          <tr key={b.id} className="border-b border-border/60">
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                className={`${inputClass} w-full`}
+                                placeholder="Nome (ex.: Business 7kW)"
+                                value={b.name}
+                                onChange={(e) => updateDraftName(b.id, e.target.value)}
+                              />
+                            </td>
+                            {FW_TYPES.map((t) => (
+                              <td key={t.key} className="px-3 py-2">
+                                <div className="flex flex-col gap-1.5">
+                                  <input
+                                    type="text"
+                                    className={`${inputClass} w-full`}
+                                    placeholder="URL"
+                                    value={b[t.key]?.url || ''}
+                                    onChange={(e) =>
+                                      updateDraftBlock(b.id, t.key, 'url', e.target.value)
+                                    }
+                                  />
+                                  <input
+                                    type="text"
+                                    className={`${inputClass} w-full`}
+                                    placeholder="Versão"
+                                    value={b[t.key]?.version || ''}
+                                    onChange={(e) =>
+                                      updateDraftBlock(b.id, t.key, 'version', e.target.value)
+                                    }
+                                  />
+                                </div>
+                              </td>
+                            ))}
+                            <td className="px-3 py-2 text-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeDraftBlock(b.id)}
+                                title="Excluir carregador"
+                              >
+                                <Trash2 size={15} />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                ))}
+                )}
               </div>
 
               <div className="space-y-3 border-t border-border pt-4">
                 <h3 className="text-sm font-semibold">Vincular modelos</h3>
                 <p className="text-xs text-muted">
-                  Cada modelo só pode ser vinculado a um bloco. Todas as estações do modelo usarão o
-                  bloco selecionado.
+                  Cada modelo só pode ser vinculado a um carregador. Todas as estações do modelo
+                  usarão o carregador selecionado.
                 </p>
-                <div className="space-y-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   {models.map((m) => (
                     <div
                       key={m}
@@ -730,7 +877,7 @@ const FirmwareView = () => {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
               <Button variant="secondary" onClick={() => setModalOpen(false)}>
                 Cancelar
               </Button>
@@ -752,7 +899,7 @@ const FirmwareView = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Vincular bloco de firmware</h2>
+              <h2 className="text-lg font-bold">Vincular carregador de firmware</h2>
               <button
                 className="rounded-lg p-1.5 text-muted hover:bg-surface-muted hover:text-foreground"
                 onClick={() => setResolveOpen(false)}
@@ -763,7 +910,7 @@ const FirmwareView = () => {
             </div>
             <p className="mb-4 text-sm text-muted">
               Os carregadores abaixo não têm URL preenchida para {resolveType?.label}. Selecione o
-              bloco de firmware que corresponde ao modelo de cada um para enviar o link correto.
+              carregador que corresponde ao modelo de cada um para enviar o link correto.
             </p>
             <div className="max-h-72 space-y-3 overflow-y-auto">
               {resolveTargets.map((s) => (

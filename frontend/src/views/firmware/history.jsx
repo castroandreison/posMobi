@@ -1,13 +1,36 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { RefreshCw, ChevronLeft, ChevronRight, Clock, Zap } from 'lucide-react';
-import { fetchFirmwareHistory, isSessionExpired } from '../../api/client.js';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
+import { fetchFirmwareHistory, fetchChargepoints, isSessionExpired } from '../../api/client.js';
 import { Card, CardHeader, CardBody } from '../../components/ui/card.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import { Badge } from '../../components/ui/badge.jsx';
 import AccountSelect from '../../components/ui/accountselect.jsx';
 
 const SIZE = 10;
+
+const CHART_COLORS = [
+  '#0ea5e9',
+  '#22c55e',
+  '#f59e0b',
+  '#ef4444',
+  '#a855f7',
+  '#ec4899',
+  '#14b8a6',
+  '#eab308',
+  '#6366f1',
+  '#f97316',
+];
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -43,6 +66,49 @@ const FirmwareHistory = () => {
   const [from, setFrom] = useState(() => fmtDateInput(startOf7DaysAgo()));
   const [to, setTo] = useState(() => fmtDateInput(endOfToday()));
   const [page, setPage] = useState(1);
+  const [stations, setStations] = useState([]);
+  const [stationsLoading, setStationsLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setStationsLoading(true);
+    fetchChargepoints(tenant?.pk)
+      .then((list) => {
+        if (active) setStations(list || []);
+      })
+      .catch(() => {
+        if (active) setStations([]);
+      })
+      .finally(() => {
+        if (active) setStationsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [tenant]);
+
+  const chartData = useMemo(() => {
+    const byModel = {};
+    stations.forEach((s) => {
+      const model = s.chargePointModel || 'Sem modelo';
+      const ver = s.fwVersion || 'Sem versão';
+      byModel[model] = byModel[model] || { total: 0 };
+      byModel[model][ver] = (byModel[model][ver] || 0) + 1;
+      byModel[model].total += 1;
+    });
+    const versions = [
+      ...new Set(stations.map((s) => s.fwVersion || 'Sem versão')),
+    ].sort();
+    return Object.keys(byModel)
+      .sort()
+      .map((model) => {
+        const row = { model, total: byModel[model].total };
+        versions.forEach((v) => {
+          row[v] = byModel[model][v] || 0;
+        });
+        return row;
+      });
+  }, [stations]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -138,6 +204,48 @@ const FirmwareHistory = () => {
           </Card>
         </div>
       )}
+
+      <Card>
+        <CardHeader>
+          <h3 className="flex items-center gap-2 text-sm font-semibold">
+            Versões de firmware por modelo
+            {stationsLoading && <span className="text-xs font-normal text-muted">carregando...</span>}
+          </h3>
+        </CardHeader>
+        <CardBody className="h-64">
+          {chartData.length ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid stroke="#27272a" vertical={false} />
+                <XAxis dataKey="model" stroke="#a1a1aa" fontSize={12} />
+                <YAxis stroke="#a1a1aa" fontSize={12} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{
+                    background: '#18181b',
+                    border: '1px solid #3f3f46',
+                    borderRadius: 8,
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                {Object.keys(chartData[0])
+                  .filter((k) => k !== 'model' && k !== 'total')
+                  .map((ver, i) => (
+                    <Bar
+                      key={ver}
+                      dataKey={ver}
+                      stackId="fw"
+                      fill={CHART_COLORS[i % CHART_COLORS.length]}
+                    />
+                  ))}
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-muted">
+              {stationsLoading ? 'Carregando equipamentos...' : 'Sem equipamentos para exibir.'}
+            </p>
+          )}
+        </CardBody>
+      </Card>
 
       <Card>
         <CardHeader>

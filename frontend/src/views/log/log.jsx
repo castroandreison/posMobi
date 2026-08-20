@@ -13,12 +13,125 @@ const levelBadge = (line) => {
   return null;
 };
 
+const OCPP_CHECKS = [
+  {
+    id: 'sent',
+    label: 'Enviados',
+    title: 'Comandos enviados pela plataforma (CSMS -> estação)',
+    patterns: [
+      'RemoteStartTransaction',
+      'RemoteStopTransaction',
+      'ChangeConfiguration',
+      'ChangeAvailability',
+      'Reset',
+      'UnlockConnector',
+      'UpdateFirmware',
+      'GetDiagnostics',
+      'SetChargingProfile',
+      'ClearChargingProfile',
+      'GetConfiguration',
+      'GetLocalListVersion',
+      'SendLocalList',
+      'TriggerMessage',
+      'enviad',
+      'sent',
+      'comando enviado',
+    ],
+  },
+  {
+    id: 'received',
+    label: 'Recebidos',
+    title: 'Mensagens recebidas da estação (estação -> CSMS)',
+    patterns: [
+      'BootNotification',
+      'Heartbeat',
+      'StatusNotification',
+      'StartTransaction',
+      'StopTransaction',
+      'MeterValues',
+      'DataTransfer',
+      'FirmwareStatusNotification',
+      'DiagnosticsStatusNotification',
+      'Authorize',
+      'SecurityEventNotification',
+      'LogStatusNotification',
+      'recebid',
+      'recv',
+      'recebido',
+    ],
+  },
+  {
+    id: 'boot',
+    label: 'Boot/Conexão',
+    title: 'Conexão e BootNotification da estação',
+    patterns: [
+      'BootNotification',
+      'conectad',
+      'conectou',
+      'connected',
+      'conectado',
+      'registrad',
+      'boot',
+    ],
+  },
+  {
+    id: 'heartbeat',
+    label: 'Heartbeat',
+    title: 'Heartbeats recebidos (estação viva)',
+    patterns: ['Heartbeat', 'heartbeat'],
+  },
+  {
+    id: 'transactions',
+    label: 'Transações',
+    title: 'Início e fim de sessões de carregamento',
+    patterns: [
+      'StartTransaction',
+      'StopTransaction',
+      'TransactionEvent',
+      'iniciou carga',
+      'encerrou carga',
+      'transa',
+    ],
+  },
+  {
+    id: 'firmware',
+    label: 'Firmware',
+    title: 'Atualizações e status de firmware',
+    patterns: [
+      'FirmwareStatusNotification',
+      'UpdateFirmware',
+      'Downloaded',
+      'Downloading',
+      'Installing',
+      'Installed',
+      'DownloadFailed',
+      'InstallationFailed',
+      'firmware',
+    ],
+  },
+  {
+    id: 'errors',
+    label: 'Erros',
+    title: 'Erros e falhas no log',
+    patterns: [
+      '[ERROR]',
+      'Faulted',
+      'Fault',
+      'errorCode',
+      'PowerMeterFailure',
+      'falha',
+      'error',
+    ],
+  },
+];
+
 const LogView = () => {
   const [source, setSource] = useState('cloud');
   const [tenant, setTenant] = useState(null);
   const [tenantAlias, setTenantAlias] = useState('');
   const [stationFilter, setStationFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [activeCheck, setActiveCheck] = useState(null);
   const [stations, setStations] = useState([]);
   const [raw, setRaw] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,9 +155,9 @@ const LogView = () => {
     }
   };
 
-  const loadStations = async () => {
+  const loadStations = async (tenantPk) => {
     try {
-      setStations(await fetchChargepoints());
+      setStations(await fetchChargepoints(tenantPk));
     } catch (e) {
       // sem estações disponíveis; filtro fica só com "Todas"
     }
@@ -92,7 +205,7 @@ const LogView = () => {
     setTenant(acct);
     setTenantAlias(acct?.alias || '');
     setStationFilter('');
-    loadStations();
+    loadStations(acct?.pk);
   };
 
   const lines = useMemo(
@@ -101,9 +214,31 @@ const LogView = () => {
         .split('\n')
         .filter((l) => l.trim())
         .filter((l) => (stationFilter ? l.includes(stationFilter) : true))
+        .filter((l) => {
+          if (!activeCheck) return true;
+          const lower = l.toLowerCase();
+          return OCPP_CHECKS.find((c) => c.id === activeCheck).patterns.some((p) =>
+            lower.includes(p.toLowerCase())
+          );
+        })
         .filter((l) => (search ? l.toLowerCase().includes(search.toLowerCase()) : true)),
-    [raw, stationFilter, search]
+    [raw, stationFilter, search, activeCheck]
   );
+
+  const checkCounts = useMemo(() => {
+    const base = raw
+      .split('\n')
+      .filter((l) => l.trim())
+      .filter((l) => (stationFilter ? l.includes(stationFilter) : true));
+    const counts = {};
+    OCPP_CHECKS.forEach((c) => {
+      counts[c.id] = base.filter((l) => {
+        const lower = l.toLowerCase();
+        return c.patterns.some((p) => lower.includes(p.toLowerCase()));
+      }).length;
+    });
+    return counts;
+  }, [raw, stationFilter]);
 
   const selectClass =
     'h-10 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-2 focus:outline-primary';
@@ -151,6 +286,54 @@ const LogView = () => {
         </CardHeader>
 
         <CardBody className="space-y-3 pt-0">
+          <div className="flex flex-wrap items-center gap-2">
+            {OCPP_CHECKS.map((c) => {
+              const count = checkCounts[c.id] || 0;
+              const isActive = activeCheck === c.id;
+              const tone =
+                count === 0
+                  ? 'border-border text-muted'
+                  : c.id === 'errors'
+                    ? 'border-danger/40 text-danger'
+                    : 'border-success/40 text-success';
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  title={c.title}
+                  onClick={() => setActiveCheck(isActive ? null : c.id)}
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    isActive
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : `${tone} hover:bg-surface-muted`
+                  }`}
+                >
+                  {c.label}
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                      count === 0
+                        ? 'bg-surface-muted text-muted'
+                        : c.id === 'errors'
+                          ? 'bg-danger/15 text-danger'
+                          : 'bg-success/15 text-success'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+            {activeCheck && (
+              <button
+                type="button"
+                onClick={() => setActiveCheck(null)}
+                className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"
+              >
+                Limpar check
+              </button>
+            )}
+          </div>
+
           <div className="flex flex-wrap items-center gap-2">
             <select
               className={`${selectClass} min-w-52`}

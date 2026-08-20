@@ -265,3 +265,99 @@ export const updateFirmware = async (stations, location) => {
 export function isSessionExpired(error) {
   return error?.response?.status === 401;
 }
+
+const STATUS_INFO = {
+  Available: { label: 'Disponível', tone: 'success' },
+  Occupied: { label: 'Ocupado', tone: 'danger' },
+  Charging: { label: 'Ocupado', tone: 'danger' },
+  Preparing: { label: 'Preparando', tone: 'warning' },
+  Finishing: { label: 'Preparando', tone: 'warning' },
+  Faulted: { label: 'Falha', tone: 'danger' },
+};
+
+export const statusInfo = (status) =>
+  STATUS_INFO[status] || { label: status || 'Desconhecido', tone: 'muted' };
+
+export const stationStatus = (s) => {
+  const connectors = s.connectors || [];
+  if (!connectors.length) return { label: 'Sem conector', tone: 'muted' };
+  const statuses = connectors
+    .map((c) => c.lastStatus?.status)
+    .filter(Boolean);
+  if (!statuses.length) return { label: 'Sem status', tone: 'muted' };
+  if (statuses.some((x) => x === 'Occupied' || x === 'Charging')) {
+    return { label: 'Ocupado', tone: 'danger' };
+  }
+  return statusInfo(statuses[0]);
+};
+
+export const ONLINE_MIN = 3;
+export const LATE_MIN = 10;
+
+const SP_TZ = 'America/Sao_Paulo';
+
+const parseSpDate = (value) => {
+  if (!value) return null;
+  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(value)) {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const m = String(value).match(
+    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/
+  );
+  if (!m) return null;
+  const [, y, mo, d, h, mi, s] = m;
+  const naiveAsUtc = Date.UTC(+y, +mo - 1, +d, +h, +mi, +(s || 0));
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: SP_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(naiveAsUtc);
+  const map = {};
+  parts.forEach((p) => {
+    map[p.type] = p.value;
+  });
+  const spWall = Date.UTC(
+    +map.year,
+    +map.month - 1,
+    +map.day,
+    +map.hour % 24,
+    +map.minute,
+    +map.second
+  );
+  const offsetMs = spWall - naiveAsUtc;
+  const result = new Date(naiveAsUtc - offsetMs);
+  return Number.isNaN(result.getTime()) ? null : result;
+};
+
+export const onlineStatus = (heartbeat) => {
+  if (!heartbeat) return { label: 'Sem heartbeat', tone: 'muted', online: false };
+  const date = parseSpDate(heartbeat);
+  if (!date) return { label: 'Sem heartbeat', tone: 'muted', online: false };
+  const diffMin = (Date.now() - date.getTime()) / 60000;
+  if (diffMin <= ONLINE_MIN) return { label: 'Online', tone: 'success', online: true };
+  if (diffMin <= LATE_MIN) return { label: 'Atrasado', tone: 'warning', online: false };
+  return { label: 'Offline', tone: 'danger', online: false };
+};
+
+export const formatToSaoPaulo = (iso) => {
+  const date = parseSpDate(iso);
+  if (!date) return iso || '—';
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: SP_TZ,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+    .format(date)
+    .replace(', ', ' ');
+};

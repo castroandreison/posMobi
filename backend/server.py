@@ -61,6 +61,40 @@ TENANT_PK = None
 LOGIN_AT = None
 
 
+def is_session_expired_response(r):
+    if r.status_code == 401:
+        return True
+    if r.status_code == 500:
+        try:
+            body = r.json()
+        except Exception:
+            return False
+        return (
+            isinstance(body, dict)
+            and body.get("status") == 500
+            and "Ocorreu um erro inesperado" in str(body.get("message", ""))
+        )
+    return False
+
+
+def perform_proxy_request(method, target, body, platform, request_fn=None, login_fn=None):
+    request_fn = request_fn or requests.request
+    login_fn = login_fn or login
+    for _ in range(3):
+        headers = build_auth_headers(
+            CONFIG["API_KEY"], platform, TOKEN, TENANT_UUID, TENANT_PK
+        )
+        print(f"[PROXY] {method} {target}")
+        r = request_fn(method, target, headers=headers, data=body, timeout=30)
+        if is_session_expired_response(r):
+            print(f"[PROXY] {r.status_code} -> relogando")
+            if login_fn():
+                continue
+        print(f"[PROXY] -> {r.status_code}")
+        return r
+    return None
+
+
 def build_auth_headers(api_key, platform, token, tenant_uuid, tenant_pk):
     headers = {
         "Api-Key": api_key,
@@ -265,25 +299,14 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         if "/api/v1/operations/" in self.path:
             platform = "MOBILE"
 
-        for _ in range(3):
-            headers = build_auth_headers(
-                CONFIG["API_KEY"], platform, TOKEN, TENANT_UUID, TENANT_PK
-            )
-            try:
-                print(f"[PROXY] {method} {target}")
-                r = requests.request(method, target, headers=headers, data=body, timeout=30)
-                if r.status_code == 401:
-                    print("[PROXY] 401 -> relogando")
-                    if login():
-                        continue
-                print(f"[PROXY] -> {r.status_code}")
-                self._forward(r)
-                return
-            except Exception as e:
-                print(f"[PROXY] Erro: {e}")
-                return self._json_response({"error": str(e)}, 502)
-
-        return self._json_response({"error": "Falha ao reautenticar na API"}, 401)
+        try:
+            r = perform_proxy_request(method, target, body, platform)
+            if r is None:
+                return self._json_response({"error": "Falha ao reautenticar na API"}, 401)
+            self._forward(r)
+        except Exception as e:
+            print(f"[PROXY] Erro: {e}")
+            return self._json_response({"error": str(e)}, 502)
 
     def _forward(self, r):
         self.send_response(r.status_code)

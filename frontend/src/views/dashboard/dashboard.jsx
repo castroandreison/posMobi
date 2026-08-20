@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
   BarChart,
@@ -10,111 +10,17 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { RefreshCw, Zap, Activity, AlertTriangle, Cpu, Wifi, WifiOff, Eye, X } from 'lucide-react';
-import { fetchChargepoints, fetchLogs, parseStationFault, isSessionExpired } from '../../api/client.js';
+import { fetchChargepoints, fetchLogs, parseStationFault, isSessionExpired, stationStatus, onlineStatus, formatToSaoPaulo } from '../../api/client.js';
 import { Card, CardHeader, CardBody } from '../../components/ui/card.jsx';
 import { Badge } from '../../components/ui/badge.jsx';
 import { Button } from '../../components/ui/button.jsx';
 import FirmwareUpdate from '../../components/ui/firmwareupdate.jsx';
+import AccountSelect from '../../components/ui/accountselect.jsx';
 
-const ONLINE_MIN = 3;
-const LATE_MIN = 10;
-
-const SP_TZ = 'America/Sao_Paulo';
-
-const parseSpDate = (value) => {
-  if (!value) return null;
-  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(value)) {
-    const d = new Date(value);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  const m = String(value).match(
-    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/
-  );
-  if (!m) return null;
-  const [, y, mo, d, h, mi, s] = m;
-  const naiveAsUtc = Date.UTC(+y, +mo - 1, +d, +h, +mi, +(s || 0));
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: SP_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).formatToParts(naiveAsUtc);
-  const map = {};
-  parts.forEach((p) => {
-    map[p.type] = p.value;
-  });
-  const spWall = Date.UTC(
-    +map.year,
-    +map.month - 1,
-    +map.day,
-    +map.hour % 24,
-    +map.minute,
-    +map.second
-  );
-  const offsetMs = spWall - naiveAsUtc;
-  const result = new Date(naiveAsUtc - offsetMs);
-  return Number.isNaN(result.getTime()) ? null : result;
-};
-
-const formatToSaoPaulo = (iso) => {
-  const date = parseSpDate(iso);
-  if (!date) return iso || '—';
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: SP_TZ,
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  })
-    .format(date)
-    .replace(', ', ' ');
-};
-
-const onlineStatus = (heartbeat) => {
-  if (!heartbeat) return { label: 'Sem heartbeat', tone: 'muted', online: false };
-  const date = parseSpDate(heartbeat);
-  if (!date) return { label: 'Sem heartbeat', tone: 'muted', online: false };
-  const diffMin = (Date.now() - date.getTime()) / 60000;
-  if (diffMin <= ONLINE_MIN) return { label: 'Online', tone: 'success', online: true };
-  if (diffMin <= LATE_MIN) return { label: 'Atrasado', tone: 'warning', online: false };
-  return { label: 'Offline', tone: 'danger', online: false };
-};
-
-const statusInfo = (status) => {
-  switch (status) {
-    case 'Available':
-      return { label: 'Disponível', tone: 'success' };
-    case 'Occupied':
-    case 'Charging':
-      return { label: 'Ocupado', tone: 'danger' };
-    case 'Preparing':
-    case 'Finishing':
-      return { label: 'Preparando', tone: 'warning' };
-    case 'Faulted':
-      return { label: 'Falha', tone: 'danger' };
-    default:
-      return { label: status || 'Desconhecido', tone: 'muted' };
-  }
-};
-
-const stationStatus = (s) => {
-  const connectors = s.connectors || [];
-  if (!connectors.length) return { label: 'Sem conector', tone: 'muted' };
-  const statuses = connectors
-    .map((c) => c.lastStatus?.status)
-    .filter(Boolean);
-  if (!statuses.length) return { label: 'Sem status', tone: 'muted' };
-  if (statuses.some((x) => x === 'Occupied' || x === 'Charging')) {
-    return { label: 'Ocupado', tone: 'danger' };
-  }
-  return statusInfo(statuses[0]);
+const DASH_CACHE = {
+  stations: null,
+  faults: {},
+  lastUpdate: null,
 };
 
 const KPIS = [
@@ -125,11 +31,10 @@ const KPIS = [
 ];
 
 const Dashboard = () => {
-  const [stations, setStations] = useState([]);
+  const [stations, setStations] = useState(DASH_CACHE.stations || []);
   const [loading, setLoading] = useState(false);
-  const [auto, setAuto] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState(null);
-  const timerRef = useRef(null);
+  const [lastUpdate, setLastUpdate] = useState(DASH_CACHE.lastUpdate);
+  const [tenant, setTenant] = useState(null);
   const [filters, setFilters] = useState({
     chargeBoxId: '',
     description: '',
@@ -144,18 +49,18 @@ const Dashboard = () => {
   const [logLines, setLogLines] = useState([]);
   const [logLoading, setLogLoading] = useState(false);
   const [logError, setLogError] = useState('');
-  const [faults, setFaults] = useState({});
+  const [faults, setFaults] = useState(DASH_CACHE.faults);
 
-  const loadStations = async () => {
+  const loadStations = async (tenantPk) => {
     setLoading(true);
     try {
-      const list = await fetchChargepoints();
+      const list = await fetchChargepoints(tenantPk);
       setStations(list);
       setLastUpdate(new Date());
       const faulted = list.filter((s) => stationStatus(s).label === 'Falha');
+      const map = {};
       if (faulted.length) {
         const tenants = [...new Set(faulted.map((s) => s.tenantName || 'Intelbras'))];
-        const map = {};
         await Promise.all(
           tenants.map(async (tn) => {
             try {
@@ -175,6 +80,9 @@ const Dashboard = () => {
       } else {
         setFaults({});
       }
+      DASH_CACHE.stations = list;
+      DASH_CACHE.faults = map;
+      DASH_CACHE.lastUpdate = new Date();
     } catch (err) {
       if (isSessionExpired(err)) toast.error('Sessão expirada');
       else toast.error(`Erro ao carregar: ${err.message || err}`);
@@ -184,21 +92,8 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    loadStations();
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    if (!DASH_CACHE.stations) loadStations(tenant?.pk);
   }, []);
-
-  useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (auto) {
-      timerRef.current = setInterval(loadStations, 30000);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [auto]);
 
   const filteredStations = useMemo(() => {
     const q = (v) => v.toLowerCase();
@@ -315,16 +210,7 @@ const Dashboard = () => {
               Atualizado: {lastUpdate.toLocaleTimeString()}
             </span>
           )}
-          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted">
-            <input
-              type="checkbox"
-              checked={auto}
-              onChange={(e) => setAuto(e.target.checked)}
-              className="accent-primary"
-            />
-            Auto Refresh (30s)
-          </label>
-          <Button size="sm" onClick={loadStations} disabled={loading}>
+          <Button size="sm" onClick={() => loadStations(tenant?.pk)} disabled={loading}>
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             {loading ? 'ATUALIZANDO...' : 'ATUALIZAR'}
           </Button>
@@ -407,6 +293,23 @@ const Dashboard = () => {
           </Button>
         </CardHeader>
         <CardBody className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1.5">
+            <label className="text-xs uppercase tracking-widest text-muted">Conta</label>
+            <AccountSelect
+              className="w-full"
+              value={tenant?.pk ?? null}
+              onChange={(acct) => {
+                setTenant(acct);
+                setFilters((f) => ({ ...f, chargeBoxId: '', description: '', model: '' }));
+                DASH_CACHE.stations = null;
+                DASH_CACHE.faults = {};
+                setFaults({});
+                loadStations(acct?.pk);
+              }}
+              placeholder="Todas as contas..."
+              allowEmpty
+            />
+          </div>
           <div className="space-y-1.5">
             <label className="text-xs uppercase tracking-widest text-muted">ChargeBox ID</label>
             <input

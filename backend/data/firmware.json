@@ -63,12 +63,46 @@
         "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FEVE%200110C/AC011K-AE-25-ITB_V1.8.602.enfs",
         "version": "V1.8.602"
       }
+    },
+    {
+      "id": "blk_mt1ju4sh",
+      "name": "City Pro  7.4",
+      "gateway": {
+        "url": "",
+        "version": "V43.11.81.267"
+      },
+      "mcu": {
+        "url": "",
+        "version": "V1.1180.190"
+      },
+      "completa": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FCP%207%2C4%20kW/AC7000-AE-45C3-INT_V1.1180.190.enfs",
+        "version": ""
+      }
+    },
+    {
+      "id": "blk_mt1k837b",
+      "name": "City Pro 22kW",
+      "gateway": {
+        "url": "",
+        "version": "V43.11.81.267"
+      },
+      "mcu": {
+        "url": "",
+        "version": "MCU V1.1180.190 "
+      },
+      "completa": {
+        "url": "https://file-serve.api-castilho.com.br/firmware/AC%2FCP%2022%20kW/AC022K-AE-45C2-INT_V1.1180.190.enfs",
+        "version": ""
+      }
     }
   ],
   "modelLinks": {
     "AC022K-AE-34(I)": "blk_ac022k_ae_34_i_",
     "AC7000-AE-34-ITB": "blk_ac7000_ae_34_itb",
     "AC7000-AE-25(I)": "blk_ac7000_ae_25_i_",
-    "AC011K-AE-25-ITB": "blk_ac011k_ae_25_itb"
+    "AC011K-AE-25-ITB": "blk_ac011k_ae_25_itb",
+    "AC7000-AE-45C3-INT": "blk_mt1ju4sh",
+    "AC022K-AE-45C2": "blk_mt1k837b"
   }
 }

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PósMobi — Documentação do Projeto</title>
+<style>
+  :root {
+    --bg: #09090b;
+    --surface: #18181b;
+    --surface-muted: #27272a;
+    --border: #3f3f46;
+    --text: #f4f4f5;
+    --muted: #a1a1aa;
+    --primary: #0ea5e9;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --purple: #a855f7;
+    --code-bg: #0d0d10;
+    --mono: "Cascadia Code", "Fira Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    display: flex;
+    min-height: 100vh;
+  }
+  nav {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 260px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 1.25rem 0;
+  }
+  nav .brand {
+    padding: 0 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+  }
+  nav .brand h1 { font-size: 1.05rem; color: var(--primary); letter-spacing: 0.08em; }
+  nav .brand p { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.18em; }
+  nav a {
+    display: block;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 0.45rem 1.25rem;
+    font-size: 0.85rem;
+    border-left: 2px solid transparent;
+  }
+  nav a:hover { color: var(--text); background: var(--surface-muted); }
+  nav a.active { color: var(--primary); border-left-color: var(--primary); background: rgba(14,165,233,0.08); }
+  nav .group {
+    margin-top: 0.6rem;
+    padding: 0 1.25rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    opacity: 0.7;
+  }
+  main {
+    margin-left: 260px;
+    flex: 1;
+    max-width: 900px;
+    padding: 2.5rem 3rem;
+  }
+  section { margin-bottom: 3rem; scroll-margin-top: 1rem; }
+  h2 {
+    font-size: 1.6rem;
+    color: var(--primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; color: var(--text); margin: 1.6rem 0 0.6rem; }
+  h4 { font-size: 1rem; color: var(--muted); margin: 1.2rem 0 0.4rem; }
+  p, li { font-size: 0.92rem; }
+  p { margin-bottom: 0.8rem; }
+  ul, ol { margin: 0 0 1rem 1.4rem; }
+  code {
+    font-family: var(--mono);
+    font-size: 0.83rem;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.1rem 0.35rem;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.8rem 0 1.2rem;
+  }
+  pre code { background: none; border: none; padding: 0; font-size: 0.8rem; line-height: 1.5; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0 1.2rem;
+    font-size: 0.85rem;
+  }
+  th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface); color: var(--muted); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.06em; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.3rem;
+    margin-bottom: 1rem;
+  }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: 1px solid;
+  }
+  .b-primary { color: var(--primary); border-color: var(--primary); }
+  .b-success { color: var(--success); border-color: var(--success); }
+  .b-warning { color: var(--warning); border-color: var(--warning); }
+  .b-danger { color: var(--danger); border-color: var(--danger); }
+  .b-purple { color: var(--purple); border-color: var(--purple); }
+  .b-muted { color: var(--muted); border-color: var(--border); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .callout {
+    border-left: 3px solid var(--primary);
+    background: rgba(14,165,233,0.07);
+    padding: 0.8rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+    font-size: 0.88rem;
+  }
+  .callout.warn { border-left-color: var(--warning); background: rgba(245,158,11,0.08); }
+  .callout.danger { border-left-color: var(--danger); background: rgba(239,68,68,0.08); }
+  .endpoint { font-family: var(--mono); font-size: 0.8rem; color: var(--success); }
+  .muted { color: var(--muted); }
+  .kbd {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+  }
+  @media (max-width: 800px) {
+    nav { position: static; width: 100%; height: auto; }
+    main { margin-left: 0; padding: 1.5rem 1.25rem; }
+    .grid2 { grid-template-columns: 1fr; }
+    body { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">
+    <h1>PósMobi</h1>
+    <p>Monitor Pós-venda</p>
+  </div>
+  <a href="#visao-geral">Visão Geral</a>
+  <a href="#arquitetura">Arquitetura</a>
+  <a href="#estrutura">Estrutura do Projeto</a>
+  <div class="group">Backend</div>
+  <a href="#backend">Servidor &amp; Proxy</a>
+  <a href="#endpoints">Endpoints</a>
+  <a href="#configuracao">Configuração (.env)</a>
+  <a href="#reauth">Reautenticação</a>
+  <div class="group">Frontend</div>
+  <a href="#frontend">Stack &amp; Cliente API</a>
+  <a href="#telas">Telas</a>
+  <a href="#autenticacao">Autenticação</a>
+  <a href="#filtros">Filtros</a>
+  <div class="group">Operação</div>
+  <a href="#execucao">Como Executar</a>
+  <a href="#testes">Testes</a>
+  <a href="#firmware">Firmware</a>
+  <a href="#historico-mudancas">Histórico de Mudanças</a>
+</nav>
+
+<main>
+
+<section id="visao-geral">
+  <h2>Visão Geral</h2>
+  <div class="card">
+    <p>
+      <strong>PósMobi</strong> é a plataforma de monitoramento pós-venda de estações de recarga
+      Intelbras. Ela consome a API pública Intelbras (CS) via um proxy próprio, exibindo o estado
+      das estações, logs OCPP, e permitindo o envio e monitoramento de atualizações de firmware.
+    </p>
+    <p class="muted">Última atualização da documentação: <span id="docDate"></span></p>
+    <p>
+      <span class="badge b-primary">React 19</span>
+      <span class="badge b-success">Vite 6</span>
+      <span class="badge b-warning">Tailwind 4</span>
+      <span class="badge b-danger">Python</span>
+      <span class="badge b-purple">Recharts</span>
+      <span class="badge b-muted">Axios</span>
+    </p>
+  </div>
+  <h3>Funcionalidades principais</h3>
+  <ul>
+    <li><strong>Dashboard</strong> — KPIs, gráfico de carregadores por modelo, tabelas por modelo com filtros avançados e modal de logs de falha.</li>
+    <li><strong>Firmware</strong> — upload de firmware por carregador, cadastro de URLs/versões por modelo, monitoramento em tempo real do status do upload.</li>
+    <li><strong>Histórico</strong> — tabela paginada de atualizações de firmware com período, gráfico de barras empilhadas de versões por modelo.</li>
+    <li><strong>Log</strong> — visualização de logs OCPP (Cloud Intelbras), busca, filtro por estação e download.</li>
+    <li><strong>Login</strong> — página de autenticação com credenciais Intelbras.</li>
+  </ul>
+</section>
+
+<section id="arquitetura">
+  <h2>Arquitetura</h2>
+  <p>Frontend e backend separados em pastas distintas, comunicando via HTTP na porta <strong>8000</strong>.</p>
+  <pre><code>Navegador
+   │  GET/POST /api/* , /login-proxy , /set-session
+   ▼
+┌─────────────────────────────┐
+│  backend/server.py          │
+│  (http.server + Threading)  │
+│  • login automático         │
+│  • proxy com reautenticação │
+│  • serve frontend/build     │
+└──────────────┬──────────────┘
+               │ proxy /api/v1/*
+               ▼
+┌─────────────────────────────┐
+│  https://cs.intelbras-cve-  │
+│  pro.com.br (API Intelbras) │
+└─────────────────────────────┘</code></pre>
+  <div class="callout">
+    Em desenvolvimento, o Vite faz proxy de <code>/api</code>, <code>/login-proxy</code> e
+    <code>/set-session</code> para <code>http://localhost:8000</code> (<code>frontend/vite.config.js</code>).
+    Em produção, o backend serve o build estático em <code>frontend/build</code>.
+  </div>
+</section>
+
+<section id="estrutura">
+  <h2>Estrutura do Projeto</h2>
+  <pre><code>45 - Monitor-Pósvenda/
+├── backend/
+│   ├── server.py              # servidor HTTP + proxy Intelbras + firmware local
+│   ├── config.py              # leitura/validação do .env
+│   ├── requirements.txt       # requests
+│   ├── .env                   # credenciais reais (não versionar)
+│   ├── .env.example           # modelo de configuração
+│   ├── data/firmware.json     # bloco de URLs/versões de firmware (persistência local)
+│   ├── logs/ocpp.log          # log OCPP servido em /api/v1/local/logs
+│   └── tests/                 # testes unitários do backend
+├── frontend/
+│   ├── package.json
+│   ├── vite.config.js         # build → build/, proxy de /api em dev
+│   ├── index.html
+│   ├── public/
+│   ├── build/                 # build de produção (gerado, servido pelo backend)
+│   └── src/
+│       ├── main.jsx           # entry point
+│       ├── App.jsx            # sessão + roteador (hash router)
+│       ├── index.css          # Tailwind 4 + tema
+│       ├── api/client.js      # cliente HTTP e helpers de domínio
+│       ├── routes/index.jsx   # rotas
+│       ├── layouts/fulllayout.jsx
+│       ├── components/        # header, sidebar, footer, ui/*
+│       └── views/
+│           ├── login/login.jsx
+│           ├── dashboard/dashboard.jsx
+│           ├── log/log.jsx
+│           └── firmware/firmware.jsx , history.jsx
+└── docs/
+    ├── index.html             # esta documentação
+    └── superpowers/           # design + planos de implementação
+</code></pre>
+</section>
+
+<section id="backend">
+  <h2>Backend — Servidor &amp; Proxy</h2>
+  <p>
+    O backend (<code>backend/server.py</code>) roda um <code>ThreadingTCPServer</code> na porta
+    <strong>8000</strong> usando <code>SimpleHTTPRequestHandler</code>. Abre o navegador
+    automaticamente ao iniciar.
+  </p>
+  <h3>Login automático</h3>
+  <p>
+    Ao iniciar (ou quando o token expira), chama <code>POST {BASE_URL}/api/v1/login</code> com as
+    credenciais do <code>.env</code>, guardando em memória <code>TOKEN</code>,
+    <code>TENANT_UUID</code> e <code>TENANT_PK</code>. Suporta backoff exponencial e tratamento
+    de rate-limit (HTTP 429 com <code>retryAfterSeconds</code>).
+  </p>
+  <h3>Proxy genérico</h3>
+  <p>
+    Toda requisição <code>/api/*</code> é repassada a <code>{BASE_URL}/api/*</code>, com headers
+    de autenticação: <code>Api-Key</code>, <code>Platform</code>,
+    <code>Authorization: Bearer {token}</code>, <code>authorization</code>, <code>tenant_uuid</code>,
+    <code>x-tenant-uuid</code>, <code>tenant_pk</code>, <code>x-tenant-pk</code>.
+  </p>
+  <div class="callout">
+    Para as rotas de firmware/operações (<code>/api/v1/firmware-update-history</code>,
+    <code>/api/v1/operations/</code>) o header <code>Platform</code> é trocado para
+    <strong>MOBILE</strong>, pois essas rotas só funcionam na API móvel.
+  </div>
+  <h3>Frontend buildado</h3>
+  <p>
+    Se <code>frontend/build</code> existir, ele é servido como conteúdo estático na raiz, com
+    <code>Cache-Control: no-cache</code> em todas as respostas.
+  </p>
+</section>
+
+<section id="endpoints">
+  <h2>Backend — Endpoints</h2>
+  <table>
+    <thead><tr><th>Método</th><th>Caminho</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td><span class="endpoint">GET</span></td><td><code>/api/v1/local/health</code></td><td>Status do token, base_url, tenant e horário do login.</td></tr>
+      <tr><td><span class="endpoint">GET</span></td><td><code>/api/v1/local/logs</code></td><td>Retorna o conteúdo local de <code>logs/ocpp.log</code> (últimas 1000 linhas).</td></tr>
+      <tr><td><span class="endpoint">GET</span></td><td><code>/api/v1/local/firmware</code></td><td>Lê os blocos de firmware de <code>data/firmware.json</code>.</td></tr>
+      <tr><td><span class="endpoint">POST</span></td><td><code>/api/v1/local/firmware</code></td><td>Valida e salva <code>{blocks, modelLinks}</code>.</td></tr>
+      <tr><td><span class="endpoint">DELETE</span></td><td><code>/api/v1/local/firmware/{id}</code></td><td>Remove um bloco e seus vínculos de modelo.</td></tr>
+      <tr><td><span class="endpoint">POST</span></td><td><code>/login-proxy</code></td><td>Login com credenciais enviadas pelo frontend; retorna os dados da sessão.</td></tr>
+      <tr><td><span class="endpoint">POST</span></td><td><code>/set-session</code></td><td>Sincroniza token/tenant da sessão do navegador com o backend.</td></tr>
+      <tr><td><span class="endpoint">GET/POST/PUT/DELETE</span></td><td><code>/api/v1/*</code></td><td>Proxy para a API Intelbras com reautenticação automática.</td></tr>
+    </tbody>
+  </table>
+  <h3>CORS &amp; OPTIONS</h3>
+  <p>Respostas JSON/proxy incluem <code>Access-Control-Allow-Origin: *</code>; <code>OPTIONS</code> responde 204 liberando GET/POST/PUT/DELETE.</p>
+</section>
+
+<section id="configuracao">
+  <h2>Backend — Configuração (.env)</h2>
+  <p>O arquivo <code>backend/.env</code> é lido por <code>config.py</code> (parse manual, sem dependência). Chaves obrigatórias:</p>
+  <pre><code>BASE_URL=https://cs.intelbras-cve-pro.com.br
+API_KEY=COLE_SUA_API_KEY
+PLATFORM=API
+EMAIL=seu-email@empresa.com
+PASSWORD=sua-senha</code></pre>
+  <div class="callout danger">Nunca versione o <code>.env</code> real. Use <code>.env.example</code> como referência. Se faltar alguma chave, o backend imprime erro e encerra.</div>
+  <h3>Dependências</h3>
+  <ul>
+    <li><code>backend/requirements.txt</code> → apenas <code>requests&gt;=2.28.0</code>.</li>
+    <li><code>frontend/package.json</code> → axios, react 19, react-router 7, recharts 2, echarts 5, lucide-react, sonner, tailwind 4, vite 6.</li>
+  </ul>
+</section>
+
+<section id="reauth">
+  <h2>Backend — Reautenticação Automática</h2>
+  <p>O proxy detecta sessão expirada e refaz o login, repetindo a requisição (até 3 tentativas).</p>
+  <h4>Funções-chave</h4>
+  <ul>
+    <li><code>is_session_expired_response(r)</code> — considera expirado: HTTP <strong>401</strong> ou HTTP <strong>500</strong> com corpo <code>{"status":500,"message":"Ocorreu um erro inesperado..."}</code>.</li>
+    <li><code>perform_proxy_request(method, target, body, platform)</code> — loop de 3 tentativas com headers de auth; re-loga e continua se a resposta indicar sessão expirada.</li>
+    <li><code>build_auth_headers(...)</code> — monta os headers de autenticação.</li>
+  </ul>
+  <div class="callout warn">
+    Histórico: o bug 500 — a API retorna 500 (e não 401) quando o token expira. O proxy repassava
+    o erro ao frontend; agora trata 500 como sessão expirada e reautentica.
+  </div>
+</section>
+
+<section id="frontend">
+  <h2>Frontend — Stack &amp; Cliente API</h2>
+  <div class="grid2">
+    <div class="card">
+      <h4>Stack</h4>
+      <ul>
+        <li>React 19 + React Router 7 (hash router)</li>
+        <li>Vite 6 + @vitejs/plugin-react</li>
+        <li>Tailwind CSS 4 (via @tailwindcss/vite)</li>
+        <li>Recharts (gráficos) + ECharts</li>
+        <li>Axios (cliente HTTP)</li>
+        <li>Lucide React (ícones) + Sonner (toasts)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Rotas (frontend/src/routes/index.jsx)</h4>
+      <ul>
+        <li><code>/</code> → redireciona para <code>/dash</code></li>
+        <li><code>/dash</code> → Dashboard</li>
+        <li><code>/firmware</code> → Upload de Firmware</li>
+        <li><code>/firmware/history</code> → Histórico</li>
+        <li><code>/log</code> → Logs</li>
+      </ul>
+    </div>
+  </div>
+  <h3>Cliente API (frontend/src/api/client.js)</h3>
+  <p>Centraliza todas as chamadas HTTP e helpers de domínio:</p>
+  <table>
+    <thead><tr><th>Função</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td><code>login(email, password)</code></td><td>POST /login-proxy</td></tr>
+      <tr><td><code>setSession(session)</code></td><td>POST /set-session</td></tr>
+      <tr><td><code>fetchChargepoints(tenantPk)</code></td><td>Lista de estações (chargePointList)</td></tr>
+      <tr><td><code>fetchTenants()</code></td><td>Lista de contas/tenants</td></tr>
+      <tr><td><code>fetchLogs(source, tenant)</code></td><td>Logs locais ou cloud</td></tr>
+      <tr><td><code>downloadLogs(tenant)</code></td><td>Download de logs como blob</td></tr>
+      <tr><td><code>fetchFirmwareHistory(params)</code></td><td>Histórico de atualizações paginado</td></tr>
+      <tr><td><code>fetchFirmwareBlocks() / saveFirmwareBlocks() / deleteFirmwareBlock()</code></td><td>CRUD de blocos de firmware</td></tr>
+      <tr><td><code>updateFirmware(stations, location)</code></td><td>Envia comando de atualização (v1.6)</td></tr>
+      <tr><td><code>stationStatus(s)</code> / <code>onlineStatus(heartbeat)</code></td><td>Status OCPP / online da estação</td></tr>
+      <tr><td><code>statusInfo(status)</code> / <code>faultLabel(...)</code> / <code>parseStationFault(...)</code> / <code>parseStationLog(...)</code></td><td>Helpers de domínio</td></tr>
+      <tr><td><code>fwStatusLabel(status)</code> / <code>fwStatusTone(status)</code></td><td>Rótulos/tons de status de firmware</td></tr>
+      <tr><td><code>isSessionExpired(error)</code></td><td>Detecta 401</td></tr>
+    </tbody>
+  </table>
+  <h3>Status e online (regras)</h3>
+  <ul>
+    <li><strong>Status OCPP</strong> — derivado de <code>connectors[].lastStatus.status</code>: <code>Available</code> → Disponível, <code>Occupied/Charging</code> → Ocupado, <code>Faulted</code> → Falha, etc.</li>
+    <li><strong>Online</strong> — derivado de <code>lastHeartbeatTimestamp</code>: ≤3 min → Online, ≤10 min → Atrasado, >10 min → Offline.</li>
+    <li>Status e online são métricas independentes (ex.: estação pode estar "Disponível" mas "Offline").</li>
+    <li><code>formatToSaoPaulo(iso)</code> — formata datas para o fuso America/Sao_Paulo.</li>
+  </ul>
+</section>
+
+<section id="telas">
+  <h2>Telas</h2>
+
+  <h3>Login (views/login/login.jsx)</h3>
+  <p>Formulário de e-mail/senha. Envia para <code>/login-proxy</code>; em sucesso salva a sessão em <code>localStorage</code> (chave <code>posmobi_session</code>) e chama <code>/set-session</code>. O e-mail vem preenchido por padrão.</p>
+
+  <h3>Dashboard (views/dashboard/dashboard.jsx)</h3>
+  <ul>
+    <li>4 KPIs: Carregadores, Ativos, Ocupados, Com falha.</li>
+    <li>Gráfico de barras "Carregadores por modelo" (recharts).</li>
+    <li>Filtros completos: ChargeBox ID, Descrição, Modelo, Status, Online, Firmware, Cidade/UF, Ativo + botão Limpar.</li>
+    <li>Tabelas agrupadas por modelo com badge de status, ícone de online, botão <em>Update</em> de firmware (para estação Disponível), cidade/UF, último heartbeat e Ativo/Inativo.</li>
+    <li>Estações com falha: modal de logs com linhas destacadas (erros em vermelho) e causa extraída do log.</li>
+    <li>Carrega dados apenas na primeira visita da sessão (cache em módulo <code>DASH_CACHE</code>); botão ATUALIZAR força recarga.</li>
+  </ul>
+
+  <h3>Firmware (views/firmware/firmware.jsx)</h3>
+  <ul>
+    <li>Filtros idênticos ao dashboard + seletor de Conta.</li>
+    <li>Tabela de carregadores com seleção múltipla: ChargeBox ID, Descrição, Modelo, Status, Status FW, Firmware, Gateway.</li>
+    <li>Envio por tipo de firmware: <strong>Gateway (.bin)</strong>, <strong>MCU (.hex)</strong>, <strong>Completa (.enfs)</strong>.</li>
+    <li>Se o modelo não tem URL cadastrada, abre modal "Vincular carregador de firmware".</li>
+    <li>Modal "Editar URL" (quase tela cheia): cadastro de carregadores/modelos com URL+Versão por tipo e grid "Vincular modelos".</li>
+    <li>Monitoramento em tempo real (10s) do status do upload via parse de logs OCPP; conclui quando todos atingem estado final (Installed, falha, Idle).</li>
+    <li>Persistência local dos blocos em <code>backend/data/firmware.json</code> (com migração do localStorage antigo <code>posmobi_firmware_urls</code>).</li>
+  </ul>
+
+  <h3>Histórico (views/firmware/history.jsx)</h3>
+  <ul>
+    <li>Resumo do período: atualizações e última atualização.</li>
+    <li>Gráfico de barras empilhadas "Versões de firmware por modelo" — cada barra é um modelo, o total é o nº de equipamentos, e cada segmento é uma versão de firmware (dados dos chargepoints atuais, filtrado pela conta).</li>
+    <li>Tabela paginada (10 por página) de atualizações: Carregador, Estação, Gateway (old→new), MCU (old→new), Atualizado em, Por, Tipo (Baseline/Atualização).</li>
+    <li>Filtros: Conta, Buscar, De, Até.</li>
+  </ul>
+
+  <h3>Log (views/log/log.jsx)</h3>
+  <ul>
+    <li>Fonte Cloud (Intelbras), seletor de conta, botão CARREGAR LOGS e DOWNLOAD (blob .txt).</li>
+    <li>Auto Refresh opcional (30s) — toggle.</li>
+    <li>Filtro por estação e busca por texto.</li>
+    <li>Visualizador estilo terminal com badges coloridos [ERROR]/[WARN]/[INFO].</li>
+  </ul>
+</section>
+
+<section id="autenticacao">
+  <h2>Autenticação &amp; Sessão</h2>
+  <ol>
+    <li><code>App.jsx</code> carrega a sessão do <code>localStorage</code> (<code>posmobi_session</code>).</li>
+    <li>Sem sessão → mostra <code>Login</code>.</li>
+    <li>Com sessão → <code>setSession()</code> sincroniza token/tenant com o backend e monta o roteador.</li>
+    <li><code>Header</code> tem menu Perfil → Logout (limpa sessão e volta ao login).</li>
+    <li>Erros 401 nas chamadas disparam toasts "Sessão expirada" via <code>isSessionExpired()</code>.</li>
+  </ol>
+</section>
+
+<section id="filtros">
+  <h2>Filtros (Dashboard &amp; Firmware)</h2>
+  <p>Os mesmos 8 filtros são usados no Dashboard e na tela de Firmware (estado <code>filters</code> + <code>useMemo filtered*</code>):</p>
+  <table>
+    <thead><tr><th>Campo</th><th>Tipo</th><th>Lógica</th></tr></thead>
+    <tbody>
+      <tr><td>ChargeBox ID</td><td>texto</td><td><code>includes</code> (case-insensitive)</td></tr>
+      <tr><td>Descrição</td><td>texto</td><td><code>includes</code></td></tr>
+      <tr><td>Modelo</td><td>select</td><td>igualdade com <code>chargePointModel</code> (ou "Sem modelo")</td></tr>
+      <tr><td>Status</td><td>select</td><td>igualdade com o label de <code>stationStatus</code></td></tr>
+      <tr><td>Online</td><td>select</td><td>igualdade com o label de <code>onlineStatus</code></td></tr>
+      <tr><td>Firmware</td><td>texto</td><td><code>includes</code> em <code>fwVersion</code></td></tr>
+      <tr><td>Cidade/UF</td><td>texto</td><td><code>includes</code> em <code>{city}/{state}</code></td></tr>
+      <tr><td>Ativo</td><td>select</td><td>Ativo/Inativo por <code>active === false</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="execucao">
+  <h2>Como Executar</h2>
+  <h3>Backend</h3>
+  <pre><code>cd backend
+pip install -r requirements.txt
+# criar/editar .env com as credenciais
+python server.py</code></pre>
+  <p>Abre <code>http://localhost:8000</code> automaticamente.</p>
+  <h3>Frontend (desenvolvimento)</h3>
+  <pre><code>cd frontend
+npm install
+npm run dev     # http://localhost:5173 (proxy /api → :8000)</code></pre>
+  <h3>Build de produção</h3>
+  <pre><code>cd frontend
+npm run build   # gera frontend/build (servido pelo backend)</code></pre>
+</section>
+
+<section id="testes">
+  <h2>Testes</h2>
+  <h3>Backend</h3>
+  <pre><code>cd backend
+python -m unittest discover -s tests</code></pre>
+  <table>
+    <thead><tr><th>Arquivo</th><th>Cobre</th></tr></thead>
+    <tbody>
+      <tr><td><code>tests/test_config.py</code></td><td>Leitura/validação do .env</td></tr>
+      <tr><td><code>tests/test_auth_headers.py</code></td><td>Headers de autenticação</td></tr>
+      <tr><td><code>tests/test_local_logs.py</code></td><td>Leitura de logs locais</td></tr>
+      <tr><td><code>tests/test_proxy_reauth.py</code></td><td>Reautenticação no proxy (401 e 500)</td></tr>
+    </tbody>
+  </table>
+  <div class="callout">Frontend: build via <code>npm run build</code> (sem suíte de testes automatizada).</div>
+</section>
+
+<section id="firmware">
+  <h2>Firmware — Fluxo de Upload</h2>
+  <ol>
+    <li>Carregadores são listados e filtrados (mesmos filtros do dashboard).</li>
+    <li>Usuário seleciona estações e um tipo (Gateway/MCU/Completa).</li>
+    <li>Para cada estação, a URL é resolvida pelo modelo via <code>modelLinks</code> → bloco → campo do tipo. Estações sem URL são direcionadas ao modal de vínculo.</li>
+    <li>As estações são agrupadas por URL e enviadas via <code>PUT /api/v1/operations/v1.6/update_firmware</code> (mode v1.6, retries 1).</li>
+    <li>Monitoramento a cada 10s: busca logs cloud e faz parse de <code>FirmwareStatusNotification</code>, <code>BootNotification</code> e <code>gatewayInfo</code> para atualizar status, versões e reboot.</li>
+    <li>Quando todos os alvos atingem estado final, o monitoramento encerra com toast de conclusão.</li>
+  </ol>
+  <h3>Blocos de firmware (dados)</h3>
+  <p>Cada bloco tem <code>id</code>, <code>name</code> e campos <code>gateway</code>, <code>mcu</code>, <code>completa</code> com <code>{url, version}</code>. Cada modelo é vinculado a um único bloco.</p>
+</section>
+
+<section id="historico-mudancas">
+  <h2>Histórico de Mudanças</h2>
+  <table>
+    <thead><tr><th>Data</th><th>Mudança</th></tr></thead>
+    <tbody>
+      <tr><td>2026-08-20</td><td>Filtros do dashboard replicados na tela de Firmware; funções de status/online movidas para <code>client.js</code>; gráfico de barras empilhadas de versões de firmware no Histórico.</td></tr>
+      <tr><td>2026-08-20</td><td>Coluna "Status" (disponibilidade) adicionada na tabela de Firmware; coluna anterior renomeada para "Status FW".</td></tr>
+      <tr><td>2026-08-20</td><td>Modal "Editar URL" redesenhadado (tabela de carregadores/modelos, vínculo em grid, termos "novo carregador").</td></tr>
+      <tr><td>2026-08-20</td><td>Dashboard sem auto-refresh; dados carregados apenas na 1ª visita da sessão (cache <code>DASH_CACHE</code>).</td></tr>
+      <tr><td>2026-08-20</td><td>Menu lateral reordenado (Dashboard, Firmware com submenu Histórico, Log).</td></tr>
+      <tr><td>2026-08-20</td><td>Correção do proxy: tratamento de 500 como sessão expirada + reautenticação (bug "Request failed with status code 500").</td></tr>
+      <tr><td>2026-08-13</td><td>Design inicial do projeto (spec em <code>docs/superpowers/specs</code>).</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</main>
+
+<script>
+  document.getElementById('docDate').textContent =
+    new Date().toLocaleDateString('pt-BR');
+  const links = document.querySelectorAll('nav a');
+  const onScroll = () => {
+    let current = '';
+    document.querySelectorAll('main section').forEach((sec) => {
+      if (window.scrollY >= sec.offsetTop - 120) current = sec.id;
+    });
+    links.forEach((a) => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  };
+  window.addEventListener('scroll', onScroll);
+  onScroll();
+</script>
+</body>
+</html>
