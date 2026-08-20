@@ -78,6 +78,7 @@ const FirmwareView = () => {
   const [blocks, setBlocks] = useState([]);
   const [modelLinks, setModelLinks] = useState({});
   const [fwLoaded, setFwLoaded] = useState(false);
+  const [allModels, setAllModels] = useState([]);
 
   useEffect(() => {
     fetchFirmwareBlocks()
@@ -386,6 +387,13 @@ const FirmwareView = () => {
     setDraftBlocks(JSON.parse(JSON.stringify(blocks)));
     setDraftLinks({ ...modelLinks });
     setModalOpen(true);
+    fetchChargepoints()
+      .then((list) =>
+        setAllModels(
+          [...new Set(list.map((s) => s.chargePointModel || 'Sem modelo'))].sort()
+        )
+      )
+      .catch(() => setAllModels([]));
   };
 
   const updateDraftBlock = (blockId, typeKey, field, value) => {
@@ -853,7 +861,10 @@ const FirmwareView = () => {
                   usarão o carregador selecionado.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {models.map((m) => (
+                  {allModels.length === 0 && (
+                    <p className="text-sm text-muted">Carregando modelos...</p>
+                  )}
+                  {allModels.map((m) => (
                     <div
                       key={m}
                       className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_14rem]"
