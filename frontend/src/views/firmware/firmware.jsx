@@ -6,6 +6,7 @@ import {
   updateFirmware,
   fetchLogs,
   parseStationLog,
+  fwStatusSteps,
   fwStatusTone,
   fwStatusLabel,
   fetchFirmwareBlocks,
@@ -21,6 +22,24 @@ import { Badge } from '../../components/ui/badge.jsx';
 import AccountSelect from '../../components/ui/accountselect.jsx';
 
 const STORAGE_KEY = 'posmobi_firmware_urls';
+
+const lineTime = (l) => {
+  let m = l.match(
+    /(\d{2})\/(\d{2})\/(\d{4})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{3}))?/
+  );
+  if (m) {
+    const [, dd, mm, yyyy, hh, mi, ss, ms] = m;
+    return new Date(+yyyy, +mm - 1, +dd, +hh, +mi, +ss, +(ms || 0));
+  }
+  m = l.match(
+    /(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{3}))?/
+  );
+  if (m) {
+    const [, yyyy, mm, dd, hh, mi, ss, ms] = m;
+    return new Date(+yyyy, +mm - 1, +dd, +hh, +mi, +ss, +(ms || 0));
+  }
+  return null;
+};
 
 const FW_TYPES = [
   { key: 'gateway', label: 'Gateway (.bin)' },
@@ -68,13 +87,10 @@ const FirmwareView = () => {
   const [draftBlocks, setDraftBlocks] = useState([]);
   const [draftLinks, setDraftLinks] = useState({});
   const [fwLoading, setFwLoading] = useState(false);
-  const [resolveOpen, setResolveOpen] = useState(false);
-  const [resolveType, setResolveType] = useState(null);
-  const [resolveTargets, setResolveTargets] = useState([]);
-  const [resolveAssign, setResolveAssign] = useState({});
   const [monitor, setMonitor] = useState({});
   const [monitoring, setMonitoring] = useState(false);
   const selectAllRef = useRef(null);
+  const monitorStartedAtRef = useRef(null);
   const [blocks, setBlocks] = useState([]);
   const [modelLinks, setModelLinks] = useState({});
   const [fwLoaded, setFwLoaded] = useState(false);
@@ -226,38 +242,89 @@ const FirmwareView = () => {
     setSelected(next);
   };
 
-  const urlFor = (s, typeKey) => {
-    const blockId = modelLinks[s.chargePointModel];
-    const entry = blocks.find((b) => b.id === blockId)?.[typeKey];
-    return entry?.url?.trim() || '';
+  const normalizeModel = (m) => (m || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+  const blockForModel = (model) => {
+    if (!model) return null;
+    const direct = modelLinks[model];
+    if (direct) {
+      const b = blocks.find((x) => x.id === direct);
+      if (b) return b;
+    }
+    const n = normalizeModel(model);
+    for (const [key, blockId] of Object.entries(modelLinks)) {
+      if (normalizeModel(key) === n) {
+        const b = blocks.find((x) => x.id === blockId);
+        if (b) return b;
+      }
+    }
+    return null;
   };
 
-  const doSend = async (type, targets) => {
-    setSending(type.key);
-    try {
-      const groups = new Map();
-      targets.forEach((s) => {
-        const url = urlFor(s, type.key);
-        if (!url) return;
-        if (!groups.has(url)) groups.set(url, []);
-        groups.get(url).push(s);
-      });
-      const total = [...groups.values()].reduce((acc, g) => acc + g.length, 0);
-      if (!total) {
-        toast.error(`Nenhum carregador com URL preenchida para ${type.label}`);
+  const urlForType = (s, typeKey) => {
+    const block = blockForModel(s.chargePointModel);
+    return block?.[typeKey]?.url?.trim() || '';
+  };
+
+  const sendType = async (type) => {
+    const target = filtered.filter((s) => selected.has(idOf(s)));
+    if (!target.length) {
+      toast.warning('Selecione ao menos um carregador na tabela antes de enviar');
+      return;
+    }
+    const groups = new Map();
+    const skipped = [];
+    target.forEach((s) => {
+      const url = urlForType(s, type.key);
+      if (!url) {
+        skipped.push(s.chargeBoxId);
         return;
       }
+      if (!groups.has(url)) groups.set(url, []);
+      groups.get(url).push(s);
+    });
+    if (!groups.size) {
+      const models = [...new Set(target.map((s) => s.chargePointModel || '—'))];
+      console.warn('[FIRMWARE] Modelos sem link', {
+        selecionados: models,
+        configurados: Object.keys(modelLinks),
+      });
+      toast.error(
+        `Nenhum carregador tem link de ${type.label}. Modelos selecionados: ${models.join(', ')}`
+      );
+      return;
+    }
+    console.log('[FIRMWARE] Enviando UpdateFirmware', {
+      type: type.key,
+      grupos: [...groups.entries()].map(([url, g]) => ({
+        url,
+        chargeBoxIds: g.map((s) => s.chargeBoxId),
+      })),
+    });
+    setSending(type.key);
+    try {
       let status = '';
+      const taskIds = [];
       for (const [url, group] of groups) {
         const data = await updateFirmware(group, url);
+        console.log('[FIRMWARE] Resposta updateFirmware', { url, data });
         if (data?.statusCode) status = data.statusCode;
+        const tid = data?.data?.taskId ?? data?.taskId;
+        if (tid) taskIds.push(tid);
       }
+      const total = [...groups.values()].reduce((acc, g) => acc + g.length, 0);
       toast.success(
-        `Upload ${type.label} enviado para ${total} carregador(es)` +
-          (status ? ` — ${status}` : '')
+        `Comando ${type.label} enviado para ${total} carregador(es)` +
+          (taskIds.length ? ` — task ${taskIds.join(', ')}` : status ? ` — ${status}` : '')
       );
-      startMonitor(targets);
+      startMonitor(target);
+      if (skipped.length) {
+        toast.warning(
+          `${skipped.length} carregador(es) sem link de ${type.label} no editor foram ignorados`
+        );
+      }
     } catch (err) {
+      console.error('[FIRMWARE] Erro ao enviar', err?.response || err);
       if (isSessionExpired(err)) toast.error('Sessão expirada');
       else
         toast.error(
@@ -270,10 +337,11 @@ const FirmwareView = () => {
 
   const startMonitor = (targets) => {
     if (!targets.length) return;
+    monitorStartedAtRef.current = Date.now();
     setMonitor((prev) => {
       const next = { ...prev };
       targets.forEach((s) => {
-        next[idOf(s)] = { status: 'Comando enviado', firmwareVersion: null, gatewayVersion: null, rebooted: false };
+        next[idOf(s)] = { status: 'Comando enviado', firmwareVersion: null, gatewayVersion: null, rebooted: false, trail: [] };
       });
       return next;
     });
@@ -285,24 +353,43 @@ const FirmwareView = () => {
   const refreshMonitor = async () => {
     if (!monitoring) return;
     try {
-      const text = await fetchLogs('cloud', tenant?.alias || 'Intelbras');
+      const cloudText = await fetchLogs('cloud', tenant?.alias || 'Intelbras').catch(() => '');
+      const since = monitorStartedAtRef.current;
+      const text = (cloudText || '')
+        .split('\n')
+        .filter((l) => {
+          const t = lineTime(l);
+          if (!since) return true;
+          return !!t && t.getTime() >= since;
+        })
+        .join('\n');
+      console.log('[FIRMWARE] refresh', {
+        since,
+        hasInstalled: /Installed/.test(text),
+        hasDownloading: /Downloading/.test(text),
+      });
       setMonitor((prev) => {
         const next = { ...prev };
         Object.keys(next).forEach((stationId) => {
           const st = stations.find((s) => String(idOf(s)) === stationId);
           if (!st) return;
           const parsed = parseStationLog(text, st.chargeBoxId);
+          const steps = fwStatusSteps(text, st.chargeBoxId);
           const cur = next[stationId] || {};
-          if (parsed.status) next[stationId] = { ...cur, status: parsed.status };
-          if (parsed.firmwareVersion)
-            next[stationId] = { ...cur, firmwareVersion: parsed.firmwareVersion };
-          if (parsed.gatewayVersion)
-            next[stationId] = { ...cur, gatewayVersion: parsed.gatewayVersion };
-          if (parsed.rebooted && !cur.rebooted)
-            next[stationId] = { ...cur, rebooted: true, status: 'Reiniciando...' };
-          if (parsed.status && FINAL_FW.includes(parsed.status)) {
-            next[stationId] = { ...cur, status: parsed.status, done: true };
+          let status = cur.status;
+          if (parsed.status) status = parsed.status;
+          else if (parsed.rebooted && !cur.rebooted) status = 'Reiniciando...';
+          const patch = { ...cur, status };
+          const trail = [];
+          for (const s of steps) {
+            if (trail[trail.length - 1] !== s) trail.push(s);
           }
+          patch.trail = trail;
+          if (parsed.firmwareVersion) patch.firmwareVersion = parsed.firmwareVersion;
+          if (parsed.gatewayVersion) patch.gatewayVersion = parsed.gatewayVersion;
+          if (parsed.rebooted) patch.rebooted = true;
+          if (parsed.status && FINAL_FW.includes(parsed.status)) patch.done = true;
+          next[stationId] = patch;
         });
         return next;
       });
@@ -326,62 +413,10 @@ const FirmwareView = () => {
     );
     if (Object.keys(monitor).length && allDone) {
       setMonitoring(false);
-      toast.success('Monitoramento concluído');
+      toast.success('Monitoramento concluído — atualizando versões');
+      loadStations(tenant?.pk);
     }
   }, [monitor, monitoring]);
-
-  const sendFirmware = (type) => {
-    const target = filtered.filter((s) => selected.has(idOf(s)));
-    if (!target.length) {
-      toast.warning('Selecione ao menos um carregador');
-      return;
-    }
-    const missing = target.filter((s) => !urlFor(s, type.key));
-    if (missing.length) {
-      const assign = {};
-      missing.forEach((s) => {
-        const curLink = modelLinks[s.chargePointModel];
-        assign[idOf(s)] = curLink || '';
-      });
-      setResolveType(type);
-      setResolveTargets(missing);
-      setResolveAssign(assign);
-      setResolveOpen(true);
-      return;
-    }
-    doSend(type, target);
-  };
-
-  const resolveConfirm = async () => {
-    const type = resolveType;
-    const newLinks = {};
-    const targets = resolveTargets.map((s) => {
-      const blockId = resolveAssign[idOf(s)];
-      if (blockId) newLinks[s.chargePointModel] = blockId;
-      return s;
-    });
-    setResolveOpen(false);
-    if (Object.keys(newLinks).length) {
-      try {
-        const nextLinks = { ...modelLinks, ...newLinks };
-        const result = await saveFirmwareBlocks(blocks, nextLinks);
-        setModelLinks(result.modelLinks || nextLinks);
-      } catch (err) {
-        toast.error(`Falha ao vincular modelo: ${err.message || err}`);
-        return;
-      }
-    }
-    const ok = targets.filter((s) => urlFor(s, type.key));
-    const skipped = targets.length - ok.length;
-    if (skipped) {
-      toast.warning(`${skipped} carregador(es) sem URL para ${type.label} foram pulados`);
-    }
-    if (!ok.length) {
-      toast.error('Nenhum carregador com URL preenchida para envio');
-      return;
-    }
-    doSend(type, ok);
-  };
 
   const openModal = () => {
     setDraftBlocks(JSON.parse(JSON.stringify(blocks)));
@@ -691,21 +726,28 @@ const FirmwareView = () => {
                         </td>
                         <td className="px-4 py-2.5">
                           {mon ? (
-                            <Badge tone={fwStatusTone(mon.status)}>
-                              {fwStatusLabel(mon.status)}
-                              {monitoring &&
-                                ['Downloading', 'Installing', 'Comando enviado', 'Reiniciando...'].includes(
-                                  mon.status
-                                ) && (
-                                  <Activity
-                                    size={12}
-                                    className="ml-1 animate-pulse"
-                                  />
-                                )}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
+                            <>
+                              <Badge tone={fwStatusTone(mon.status)}>
+                                {fwStatusLabel(mon.status)}
+                                {monitoring &&
+                                  ['Downloading', 'Installing', 'Comando enviado', 'Reiniciando...'].includes(
+                                    mon.status
+                                  ) && (
+                                    <Activity
+                                      size={12}
+                                      className="ml-1 animate-pulse"
+                                    />
+                                  )}
+                              </Badge>
+                              {mon?.trail?.length > 1 && (
+                                <div className="mt-1 text-[10px] leading-tight text-muted">
+                                  {mon.trail.map((t) => fwStatusLabel(t)).join(' › ')}
+                                </div>
+                              )}
+                            </>
+                           ) : (
+                             <span className="text-muted">—</span>
+                           )}
                         </td>
                         <td className="px-4 py-2.5 text-muted">
                           {mon?.firmwareVersion || s.fwVersion || '—'}
@@ -737,8 +779,8 @@ const FirmwareView = () => {
             <Button
               key={t.key}
               variant="primary"
-              disabled={sending !== '' || selected.size === 0}
-              onClick={() => sendFirmware(t)}
+              disabled={sending !== ''}
+              onClick={() => sendType(t)}
             >
               <UploadCloud size={16} className={sending === t.key ? 'animate-pulse' : ''} />
               {sending === t.key ? `ENVIANDO ${t.label.toUpperCase()}...` : t.label}
@@ -749,6 +791,9 @@ const FirmwareView = () => {
               Selecione um carregador para habilitar o envio.
             </span>
           )}
+          <span className="self-center text-xs text-muted">
+            Envia o link do tipo selecionado configurado no editor de links.
+          </span>
         </CardBody>
       </Card>
 
@@ -895,65 +940,6 @@ const FirmwareView = () => {
               <Button onClick={saveUrls} disabled={fwLoading}>
                 {fwLoading ? 'Salvando...' : 'Salvar'}
               </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {resolveOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setResolveOpen(false)}
-        >
-          <div
-            className="w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Vincular carregador de firmware</h2>
-              <button
-                className="rounded-lg p-1.5 text-muted hover:bg-surface-muted hover:text-foreground"
-                onClick={() => setResolveOpen(false)}
-                aria-label="Fechar"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <p className="mb-4 text-sm text-muted">
-              Os carregadores abaixo não têm URL preenchida para {resolveType?.label}. Selecione o
-              carregador que corresponde ao modelo de cada um para enviar o link correto.
-            </p>
-            <div className="max-h-72 space-y-3 overflow-y-auto">
-              {resolveTargets.map((s) => (
-                <div key={idOf(s)} className="space-y-1.5">
-                  <label className="text-xs text-muted">
-                    {s.chargeBoxId}
-                    {s.description ? ` — ${s.description}` : ''}
-                    <br />
-                    <span className="text-foreground">{s.chargePointModel || '—'}</span>
-                  </label>
-                  <select
-                    className={`${inputClass} w-full`}
-                    value={resolveAssign[idOf(s)] || ''}
-                    onChange={(e) =>
-                      setResolveAssign((prev) => ({ ...prev, [idOf(s)]: e.target.value }))
-                    }
-                  >
-                    <option value="">— não vinculado —</option>
-                    {blocks.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name.trim() || '(sem nome)'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setResolveOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={resolveConfirm}>Enviar</Button>
             </div>
           </div>
         </div>

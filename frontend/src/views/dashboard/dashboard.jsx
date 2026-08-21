@@ -10,7 +10,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { RefreshCw, Zap, Activity, AlertTriangle, Cpu, Wifi, WifiOff, Eye, X } from 'lucide-react';
-import { fetchChargepoints, fetchLogs, parseStationFault, isSessionExpired, stationStatus, onlineStatus, formatToSaoPaulo } from '../../api/client.js';
+import { fetchChargepoints, fetchLogs, fetchTenants, parseStationFault, isSessionExpired, stationStatus, onlineStatus, formatToSaoPaulo } from '../../api/client.js';
 import { Card, CardHeader, CardBody } from '../../components/ui/card.jsx';
 import { Badge } from '../../components/ui/badge.jsx';
 import { Button } from '../../components/ui/button.jsx';
@@ -50,6 +50,7 @@ const Dashboard = () => {
   const [logLoading, setLogLoading] = useState(false);
   const [logError, setLogError] = useState('');
   const [faults, setFaults] = useState(DASH_CACHE.faults);
+  const [initialized, setInitialized] = useState(false);
 
   const loadStations = async (tenantPk) => {
     setLoading(true);
@@ -92,7 +93,28 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    if (!DASH_CACHE.stations) loadStations(tenant?.pk);
+    let active = true;
+    (async () => {
+      try {
+        const list = await fetchTenants();
+        if (!active) return;
+        const intelbras =
+          list.find(
+            (t) =>
+              (t.name || '').toLowerCase().includes('intelbras') ||
+              (t.alias || '').toLowerCase().includes('intelbras')
+          ) || list[0] || null;
+        setTenant(intelbras);
+        loadStations(intelbras?.pk);
+      } catch (e) {
+        loadStations(null);
+      } finally {
+        if (active) setInitialized(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const filteredStations = useMemo(() => {

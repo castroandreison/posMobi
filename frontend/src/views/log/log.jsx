@@ -13,6 +13,12 @@ const levelBadge = (line) => {
   return null;
 };
 
+const directionTag = (line) => {
+  if (/Sending:/i.test(line)) return { label: 'ENVIO', color: '#0ea5e9' };
+  if (/Receiving:/i.test(line)) return { label: 'RECV', color: '#a1a1aa' };
+  return null;
+};
+
 const OCPP_CHECKS = [
   {
     id: 'sent',
@@ -36,6 +42,7 @@ const OCPP_CHECKS = [
       'enviad',
       'sent',
       'comando enviado',
+      'sending:',
     ],
   },
   {
@@ -252,13 +259,13 @@ const LogView = () => {
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              className={`${selectClass} min-w-36`}
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-            >
-              <option value="cloud">Cloud (Intelbras)</option>
-            </select>
+             <select
+               className={`${selectClass} min-w-36`}
+               value={source}
+               onChange={(e) => setSource(e.target.value)}
+             >
+                <option value="cloud">Cloud (Intelbras)</option>
+              </select>
             <AccountSelect
               className="w-64"
               value={tenant?.pk ?? null}
@@ -375,25 +382,37 @@ const LogView = () => {
             }}
           >
             {raw.trim() ? (
-              lines.map((line, i) => {
-                const badge = levelBadge(line);
-                return (
-                  <div key={i} className="px-1 text-zinc-300">
-                    {badge && (
-                      <span
-                        className="mr-2 inline-block min-w-13 rounded px-1 text-center text-[10px] font-bold tracking-wider"
-                        style={{
-                          color: badge.color,
-                          border: `1px solid ${badge.color}`,
-                        }}
-                      >
-                        {badge.label}
-                      </span>
-                    )}
-                    {line}
-                  </div>
-                );
-              })
+               lines.map((line, i) => {
+                 const badge = levelBadge(line);
+                 const dir = directionTag(line);
+                 return (
+                   <div key={i} className="px-1 text-zinc-300">
+                     {dir && (
+                       <span
+                         className="mr-1 inline-block min-w-12 rounded px-1 text-center text-[10px] font-bold tracking-wider"
+                         style={{
+                           color: dir.color,
+                           border: `1px solid ${dir.color}`,
+                         }}
+                       >
+                         {dir.label}
+                       </span>
+                     )}
+                     {badge && (
+                       <span
+                         className="mr-2 inline-block min-w-13 rounded px-1 text-center text-[10px] font-bold tracking-wider"
+                         style={{
+                           color: badge.color,
+                           border: `1px solid ${badge.color}`,
+                         }}
+                       >
+                         {badge.label}
+                       </span>
+                     )}
+                     {line}
+                   </div>
+                 );
+               })
             ) : (
               <p className="text-muted italic">
                 {loading

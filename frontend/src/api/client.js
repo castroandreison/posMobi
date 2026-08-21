@@ -56,7 +56,7 @@ const FW_STATUS_ORDER = [
   'Idle',
 ];
 
-const FW_STATUS_PATTERN = /^(Downloaded|DownloadFailed|Downloading|Idle|InstallationFailed|Installing|Installed)$/;
+const FW_STATUS_PATTERN = /^(downloaded|downloadfailed|downloading|idle|installationfailed|installing|installed)$/i;
 
 const FAULT_LABELS = {
   overtemp: 'Overtemp',
@@ -154,6 +154,18 @@ export const parseStationLog = (text, chargeBoxId) => {
     }
   }
   return info;
+};
+
+export const fwStatusSteps = (text, chargeBoxId) => {
+  const steps = [];
+  const lines = (text || '').split('\n');
+  for (const line of lines) {
+    if (!line.includes(chargeBoxId)) continue;
+    if (!line.includes('FirmwareStatusNotification')) continue;
+    const m = line.match(/\\?"status\\?":\\?"([^"\\]+)\\?"/);
+    if (m && FW_STATUS_PATTERN.test(m[1])) steps.push(m[1]);
+  }
+  return steps;
 };
 
 const FW_STATUS_LABELS = {
