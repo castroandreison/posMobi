@@ -54,6 +54,7 @@ def read_local_log(log_path, max_lines=1000):
             print(f"[LOCAL LOGS] Error reading: {e}")
     return "".join(lines)
 
+
 CONFIG = {}
 TOKEN = None
 TENANT_UUID = None

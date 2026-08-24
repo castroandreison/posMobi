@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { RefreshCw, Zap, Activity, AlertTriangle, Cpu, Wifi, WifiOff, Eye, X } from 'lucide-react';
 import { fetchChargepoints, fetchLogs, fetchTenants, parseStationFault, isSessionExpired, stationStatus, onlineStatus, formatToSaoPaulo } from '../../api/client.js';
+import { resolveDefaultTenant, setStoredTenantPk } from '../../api/defaultTenant.js';
 import { Card, CardHeader, CardBody } from '../../components/ui/card.jsx';
 import { Badge } from '../../components/ui/badge.jsx';
 import { Button } from '../../components/ui/button.jsx';
@@ -98,12 +99,7 @@ const Dashboard = () => {
       try {
         const list = await fetchTenants();
         if (!active) return;
-        const intelbras =
-          list.find(
-            (t) =>
-              (t.name || '').toLowerCase().includes('intelbras') ||
-              (t.alias || '').toLowerCase().includes('intelbras')
-          ) || list[0] || null;
+        const intelbras = resolveDefaultTenant(list) || list[0] || null;
         setTenant(intelbras);
         loadStations(intelbras?.pk);
       } catch (e) {
@@ -287,7 +283,9 @@ const Dashboard = () => {
       {modelKeys.length === 0 && !loading && (
         <Card>
           <CardBody className="text-sm text-muted">
-            Nenhum carregador encontrado com os filtros atuais.
+            {Object.values(filters).some((v) => v !== '')
+              ? 'Nenhum carregador encontrado com os filtros atuais.'
+              : `Nenhum carregador encontrado para a conta "${tenant?.name || tenant?.alias || 'selecionada'}".`}
           </CardBody>
         </Card>
       )}
@@ -322,6 +320,7 @@ const Dashboard = () => {
               value={tenant?.pk ?? null}
               onChange={(acct) => {
                 setTenant(acct);
+                setStoredTenantPk(acct?.pk ?? null);
                 setFilters((f) => ({ ...f, chargeBoxId: '', description: '', model: '' }));
                 DASH_CACHE.stations = null;
                 DASH_CACHE.faults = {};
