@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: #000000;
+  --color-surface: #141416;
+  --color-surface-muted: #232326;
+  --color-popover: #1b1b1e;
+  --color-border: #3f3f46;
+  --color-foreground: #fafafa;
+  --color-muted: #a1a1aa;
+
+  --color-primary: #00a859;
+  --color-primary-hover: #12c26d;
+  --color-primary-foreground: #ffffff;
+
+  /* Cinza institucional Intelbras (Pantone 425 C) */
+  --color-charcoal: #54585a;
+
+  --color-success: #22c55e;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  select,
+  option,
+  input[type='date'],
+  input[type='date']::-webkit-calendar-picker-indicator {
+    color-scheme: dark;
+  }
+
+  select option {
+    background-color: var(--color-popover);
+    color: var(--color-foreground);
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
