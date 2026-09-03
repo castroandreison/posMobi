@@ -20,6 +20,7 @@ declare global {
       deleteFirmwareBlock: (blockId: string) => Promise<Record<string, unknown>>;
       getFirmwareHistory: (params: Record<string, unknown>) => Promise<Record<string, unknown>>;
       getConfig: () => Promise<{ email: string; baseUrl: string; loaded: boolean; error: string | null }>;
+      openManual: () => Promise<{ ok: boolean; path?: string; error?: string }>;
     };
   }
 }

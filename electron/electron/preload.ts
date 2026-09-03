@@ -45,4 +45,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('firmware:getHistory', params),
 
   getConfig: () => ipcRenderer.invoke('config:get'),
+
+  openManual: () => ipcRenderer.invoke('manual:open'),
 });

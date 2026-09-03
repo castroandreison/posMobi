@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Menu, Power } from 'lucide-react';
+import { BookOpen, Menu, Power } from 'lucide-react';
 
 interface HeaderProps {
   onLogout: () => void;
@@ -55,6 +55,14 @@ export const Header: React.FC<HeaderProps> = ({ onLogout, onMenu }) => {
           />
           {online === false ? 'Offline' : online === true ? 'Online' : 'Verificando...'}
         </span>
+        <button
+          className="flex h-9 items-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm hover:bg-surface-muted"
+          title="Abrir manual de instrução"
+          onClick={() => window.electronAPI.openManual()}
+        >
+          <BookOpen size={16} className="text-primary" />
+          Manual
+        </button>
         <div className="relative">
           <button
             className="flex h-9 items-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm hover:bg-surface-muted"

@@ -1,9 +1,27 @@
-import { app, BrowserWindow, ipcMain, session } from 'electron';
+import { app, BrowserWindow, ipcMain, session, shell } from 'electron';
 import { join } from 'path';
+import { existsSync } from 'fs';
 import { registerAuthHandlers } from './ipc/auth';
 import { registerApiHandlers } from './ipc/api';
 import { registerFirmwareHandlers } from './ipc/firmware';
 import { registerLogHandlers } from './ipc/logs';
+
+function registerManualHandlers() {
+  ipcMain.handle('manual:open', async () => {
+    const candidates = [
+      join(process.resourcesPath || '', 'manual', 'manual.html'),
+      join(app.getAppPath(), 'resources', 'manual', 'manual.html'),
+      join(app.getAppPath(), 'manual', 'manual.html'),
+    ];
+    for (const path of candidates) {
+      if (existsSync(path)) {
+        const err = await shell.openPath(path);
+        if (!err) return { ok: true, path };
+      }
+    }
+    return { ok: false, error: 'Manual não encontrado' };
+  });
+}
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -45,6 +63,7 @@ app.whenReady().then(() => {
   registerApiHandlers();
   registerFirmwareHandlers();
   registerLogHandlers();
+  registerManualHandlers();
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({

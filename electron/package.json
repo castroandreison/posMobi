@@ -55,6 +55,11 @@
       {
         "from": "resources/firmware.json",
         "to": "firmware.json"
+      },
+      {
+        "from": "resources/manual",
+        "to": "manual",
+        "filter": ["**/*"]
       }
     ],
     "win": {

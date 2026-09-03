@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PósMobi — Mobility Tools · Manual da Plataforma</title>
+<style>
+  :root {
+    --bg: #000000;
+    --surface: #141416;
+    --surface-muted: #232326;
+    --popover: #1b1b1e;
+    --border: #3f3f46;
+    --fg: #fafafa;
+    --muted: #a1a1aa;
+    --primary: #00a859;
+    --primary-hover: #12c26d;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Roboto", ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.6;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ===== Sidebar ===== */
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 264px;
+    background: #0a0a0a;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    z-index: 40;
+  }
+  .sidebar .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    height: 64px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar .brand .name { font-size: 18px; font-weight: 900; letter-spacing: 0.2em; color: var(--primary); }
+  .sidebar .brand .sub { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .sidebar nav { flex: 1; padding: 12px; }
+  .sidebar nav .nav-group { margin-bottom: 4px; }
+  .sidebar nav .nav-group .group-label {
+    padding: 8px 12px 4px; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.15em; color: var(--muted); font-weight: 700;
+  }
+  .sidebar nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 8px;
+    color: var(--muted); text-decoration: none; font-size: 14px;
+    transition: all .15s;
+  }
+  .sidebar nav a:hover { background: var(--surface-muted); color: var(--fg); }
+  .sidebar nav a.active { background: rgba(0,168,89,.15); color: var(--primary); }
+  .sidebar .foot {
+    border-top: 1px solid var(--border);
+    padding: 16px 20px; font-size: 12px; color: var(--muted);
+  }
+
+  /* ===== Main ===== */
+  .main { margin-left: 264px; flex: 1; padding: 40px 48px 80px; max-width: 1080px; }
+  .main .page-title { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
+  .main .page-sub { color: var(--muted); margin-bottom: 28px; }
+
+  section { scroll-margin-top: 24px; margin-bottom: 56px; }
+  section h2 {
+    font-size: 20px; font-weight: 700;
+    padding-bottom: 10px; margin-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+    color: var(--primary);
+  }
+  section h3 { font-size: 16px; font-weight: 700; margin: 24px 0 10px; }
+  section h4 { font-size: 14px; font-weight: 600; margin: 16px 0 8px; color: var(--fg); }
+  p { margin: 10px 0; color: #d4d4d8; }
+  ul, ol { margin: 10px 0 10px 22px; color: #d4d4d8; }
+  li { margin: 5px 0; }
+  strong { color: var(--fg); }
+  code {
+    background: var(--surface-muted); border: 1px solid var(--border);
+    border-radius: 5px; padding: 1px 6px; font-size: 0.85em;
+    color: var(--primary-hover);
+  }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 22px; margin: 18px 0;
+  }
+  .callout {
+    border-left: 4px solid var(--primary);
+    background: rgba(0,168,89,.08);
+    padding: 14px 18px; border-radius: 8px;
+    margin: 16px 0;
+  }
+  .callout.warn { border-left-color: var(--warning); background: rgba(245,158,11,.08); }
+  .callout.danger { border-left-color: var(--danger); background: rgba(239,68,68,.08); }
+  .callout p { color: #e4e4e7; }
+
+  /* ===== Badges status FW ===== */
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 6px;
+    border: 1px solid; font-size: 13px; font-weight: 600; white-space: nowrap;
+  }
+  .b-success { background: rgba(34,197,94,.15); color: var(--success); border-color: rgba(34,197,94,.4); }
+  .b-danger  { background: rgba(239,68,68,.15); color: var(--danger);  border-color: rgba(239,68,68,.4); }
+  .b-warning { background: rgba(245,158,11,.15); color: var(--warning); border-color: rgba(245,158,11,.4); }
+  .b-primary { background: rgba(0,168,89,.15); color: var(--primary); border-color: rgba(0,168,89,.4); }
+  .b-muted   { background: var(--surface-muted); color: var(--muted); border-color: var(--border); }
+
+  table {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    margin: 14px 0;
+  }
+  thead th {
+    text-align: left; font-size: 11px; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--muted);
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    background: var(--surface-muted);
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid rgba(63,63,70,.5); color: #d4d4d8; vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(35,35,38,.4); }
+
+  .img-wrap { margin: 18px 0; }
+  .img-wrap img {
+    max-width: 100%; border: 1px solid var(--border); border-radius: 12px;
+    background: var(--surface); display: block;
+  }
+  .img-cap { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .flow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; }
+  .flow .step {
+    background: var(--surface-muted); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px; font-size: 13px;
+  }
+  .flow .arrow { color: var(--primary); font-weight: bold; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 14px; margin: 16px 0; }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px;
+  }
+  .kpi .num { font-size: 28px; font-weight: 900; }
+  .kpi .lbl { font-size: 12px; color: var(--muted); }
+  .kpi .ic { font-size: 20px; margin-bottom: 6px; }
+  .c-primary { color: var(--primary); } .c-success { color: var(--success); }
+  .c-warning { color: var(--warning); } .c-danger  { color: var(--danger); }
+  .c-muted { color: var(--muted); }
+
+  .note { color: var(--muted); font-size: 13px; }
+
+  /* mobile toggle */
+  .menu-btn { display: none; }
+  @media (max-width: 860px) {
+    .sidebar { transform: translateX(-100%); transition: transform .2s; }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0; padding: 24px; }
+    .menu-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--surface-muted); border: 1px solid var(--border);
+      color: var(--fg); padding: 8px 14px; border-radius: 8px;
+      font-size: 14px; cursor: pointer; margin-bottom: 16px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<button class="menu-btn" id="menuBtn">☰ Menu</button>
+
+<!-- ===================== SIDEBAR ===================== -->
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <span class="name">PósMobi</span>
+    <span class="sub">Mobility Tools</span>
+  </div>
+  <nav>
+    <div class="nav-group">
+      <div class="group-label">Plataforma</div>
+      <a href="#introducao" class="active">Introdução</a>
+      <a href="#login">Login</a>
+    </div>
+    <div class="nav-group">
+      <div class="group-label">Operação</div>
+      <a href="#dashboard">Dashboard</a>
+      <a href="#carregadores">Carregadores</a>
+    </div>
+    <div class="nav-group">
+      <div class="group-label">Firmware</div>
+      <a href="#upload">Upload de Firmware</a>
+      <a href="#editor">Editor de Links</a>
+      <a href="#statusfw">Status de Atualização (FW)</a>
+      <a href="#historico">Histórico</a>
+    </div>
+    <div class="nav-group">
+      <div class="group-label">Diagnóstico</div>
+      <a href="#log">Log do Sistema</a>
+    </div>
+  </nav>
+  <div class="foot">Estações de recarga Intelbras</div>
+</aside>
+
+<!-- ===================== MAIN ===================== -->
+<main class="main">
+
+  <!-- ============ INTRODUÇÃO ============ -->
+  <section id="introducao">
+    <h1 class="page-title">Manual da Plataforma PósMobi</h1>
+    <p class="page-sub">Plataforma técnica de gestão de carregadores de veículos elétricos (mobility tools).</p>
+
+    <p>
+      O <strong>PósMobi — Mobility Tools</strong> é uma plataforma técnica de gestão e operação de
+      <strong>estações de recarga de veículos elétricos</strong> da Intelbras. Através de um único painel é
+      possível acompanhar em tempo real o status dos carregadores, diagnosticar falhas, consultar os logs de
+      comunicação (protocolo <strong>OCPP</strong>) e <strong>atualizar o firmware</strong> das estações de
+      forma remota.
+    </p>
+
+    <div class="callout">
+      <p><strong>Módulos principais do sistema:</strong></p>
+      <ul>
+        <li><strong>Dashboard</strong> — visão geral dos carregadores cadastrados e seus indicadores.</li>
+        <li><strong>Firmware</strong> — upload/envio de novos firmwares para as estações e editor de links por modelo.</li>
+        <li><strong>Histórico</strong> — registro das atualizações de firmware realizadas.</li>
+        <li><strong>Log</strong> — diagnóstico técnico da comunicação entre a plataforma (CSMS) e as estações.</li>
+      </ul>
+    </div>
+
+    <p>
+      Este manual descreve <strong>para que serve cada botão</strong>, o significado de cada campo/coluna das
+      telas e explica os <strong>status de atualização de firmware</strong> exibidos durante um envio.
+    </p>
+  </section>
+
+  <!-- ============ LOGIN ============ -->
+  <section id="login">
+    <h2>1. Login</h2>
+    <p>
+      A tela de login é a porta de entrada do <strong>PósMobi</strong>. Cada usuário acessa a plataforma com as
+      suas próprias credenciais (e-mail e senha). O acesso é individual: cada usuário enxerga as contas e
+      estações às quais tem permissão.
+    </p>
+
+    <div class="img-wrap">
+      <img src="image1.png" alt="Tela de login do PósMobi" />
+      <div class="img-cap">Tela de login — PósMobi Mobility Tools.</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Campo / Botão</th><th>Para que serve</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>PósMobi / Mobility Tools</strong></td><td>Identificação da plataforma (nome e subtítulo).</td></tr>
+        <tr><td><strong>EMAIL</strong></td><td>Digite o e-mail do usuário (ex.: seu.email@empresa.com).</td></tr>
+        <tr><td><strong>SENHA</strong></td><td>Digite a senha do usuário.</td></tr>
+        <tr><td><strong>CONECTAR</strong></td><td>Botão que valida as credenciais e inicia a sessão na plataforma.</td></tr>
+        <tr><td><strong>Conectado à internet</strong></td><td>Indicador de <em>conexão de rede</em> do dispositivo (não é o estado do login). Verde = com internet; vermelho = sem internet; cinza = verificando.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <p><strong>Observação:</strong> o indicador de conexão refere-se à rede local do computador. Mesmo com a
+      internet ativa, o login só é concluído se as credenciais estiverem corretas e houver acesso à API da
+      plataforma.</p>
+    </div>
+  </section>
+
+  <!-- ============ DASHBOARD ============ -->
+  <section id="dashboard">
+    <h2>2. Dashboard</h2>
+    <p>
+      O <strong>Dashboard</strong> apresenta a visão geral da operação: indicadores (KPIs), distribuição dos
+      carregadores por modelo e a tabela de carregadores com filtros.
+    </p>
+
+    <div class="img-wrap">
+      <img src="image2.png" alt="Dashboard do PósMobi" />
+      <div class="img-cap">Dashboard — indicadores, gráfico por modelo e lista de carregadores.</div>
+    </div>
+
+    <h3>Indicadores (KPIs)</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="ic c-primary">⚡</div><div class="num c-primary">98</div><div class="lbl">Carregadores (total)</div></div>
+      <div class="kpi"><div class="ic c-success">📶</div><div class="num c-success">30</div><div class="lbl">Ativos</div></div>
+      <div class="kpi"><div class="ic c-warning">🔌</div><div class="num c-warning">30</div><div class="lbl">Ocupados</div></div>
+      <div class="kpi"><div class="ic c-danger">⚠️</div><div class="num c-danger">0</div><div class="lbl">Com falha</div></div>
+    </div>
+
+    <table>
+      <thead><tr><th>KPI</th><th>Significado</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Carregadores</strong> <span class="c-primary">⚡</span></td><td>Total de carregadores cadastrados (considerando a conta e os filtros aplicados).</td></tr>
+        <tr><td><strong>Ativos</strong> <span class="c-success">📶</span></td><td>Carregadores marcados como ativos na operação.</td></tr>
+        <tr><td><strong>Ocupados</strong> <span class="c-warning">🔌</span></td><td>Carregadores em uso (sessão de carga em andamento).</td></tr>
+        <tr><td><strong>Com falha</strong> <span class="c-danger">⚠️</span></td><td>Carregadores com status de falha (<em>Faulted</em>).</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Botão ATUALIZAR e indicador de horário</h3>
+    <div class="card">
+      <p>
+        No topo do dashboard há a informação <strong>"Atualizado: 14:55:07"</strong> e o botão
+        <strong>ATUALIZAR</strong> (ícone de atualização ↻).
+      </p>
+      <ul>
+        <li><strong>Atualizado:</strong> horário (fuso de São Paulo) da última atualização dos dados na tela.</li>
+        <li><strong>ATUALIZAR:</strong> força o recarregamento dos carregadores diretamente da API. Durante o
+        carregamento, o botão mostra <strong>ATUALIZANDO...</strong> com o ícone girando.</li>
+      </ul>
+    </div>
+
+    <h3>Gráfico "Carregadores por modelo"</h3>
+    <p>
+      Gráfico de barras que mostra quantos carregadores existem para cada modelo de equipamento (ex.:
+      <code>ACOTIK-AE-25-ITB</code>, <code>ACOZZK-AE-45C2</code>, <code>AC7000</code>, <code>Sem modelo</code>).
+      Clicar em cada barra/tooltip exibe o total daquele modelo. Os valores são recalculados conforme os filtros.
+    </p>
+
+    <h3>Filtros e limpar</h3>
+    <p>
+      Os filtros permitem refinar a lista de carregadores. O botão <strong>Limpar</strong> restaura todos os
+      campos para o padrão ("Todos", campos em branco).
+    </p>
+    <table>
+      <thead><tr><th>Filtro</th><th>Como usar</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Conta</strong></td><td>Seletor de conta/tenant. Define qual conjunto de carregadores carregar ("Todas as contas..." = sem filtro).</td></tr>
+        <tr><td><strong>ChargeBox ID</strong></td><td>Campo de texto — busca pelo identificador da estação.</td></tr>
+        <tr><td><strong>Descrição</strong></td><td>Campo de texto — busca por nome/descrição da estação.</td></tr>
+        <tr><td><strong>Modelo</strong></td><td>Lista — seleciona um modelo específico.</td></tr>
+        <tr><td><strong>Status</strong></td><td>Lista — filtra por status da estação (Disponível, Ocupado, Preparando, Falha).</td></tr>
+        <tr><td><strong>Online</strong></td><td>Lista — filtra por Online / Atrasado / Offline.</td></tr>
+        <tr><td><strong>Firmware</strong></td><td>Campo de texto — busca por versão de firmware.</td></tr>
+        <tr><td><strong>Cidade/UF</strong></td><td>Campo de texto — busca por cidade/UF (ex.: São José/SC).</td></tr>
+        <tr><td><strong>Ativo</strong></td><td>Lista — Ativo / Inativo / Todos.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ CARREGADORES ============ -->
+  <section id="carregadores">
+    <h2>3. Carregadores (tabela)</h2>
+    <p>
+      Os carregadores são listados em tabelas agrupadas <strong>por modelo</strong> (cada modelo tem seu bloco
+      com o número de estações). Cada linha representa uma estação de recarga.
+    </p>
+
+    <div class="img-wrap">
+      <img src="image3.png" alt="Tabela de carregadores por modelo" />
+      <div class="img-cap">Tabela de carregadores agrupada por modelo, com status e datas de heartbeat.</div>
+    </div>
+
+    <h3>Colunas e seus significados</h3>
+    <table>
+      <thead><tr><th>Coluna</th><th>Significado</th></tr></thead>
+      <tbody>
+        <tr><td><strong>ChargeBox ID</strong></td><td>Identificador único da estação (ex.: <code>NKYMZIOOOI7FN</code>).</td></tr>
+        <tr><td><strong>Descrição</strong></td><td>Nome de identificação da estação (ex.: "Lins e Silva's").</td></tr>
+        <tr><td><strong>Status</strong> <span class="badge b-success">Disponível</span></td><td>Estado atual do conector. Badges: <span class="badge b-success">Disponível</span> <span class="badge b-danger">Ocupado</span> <span class="badge b-warning">Preparando</span> <span class="badge b-danger">Falha</span>.</td></tr>
+        <tr><td><strong>Online</strong> <span class="c-success">📶</span></td><td>Ícone Wi-fi: <span class="c-success">Wifi</span> = Online (heartbeat recente), <span class="c-warning">Atrasado</span> = sem heartbeat há alguns minutos, <span class="c-danger">WifiOff</span> = Offline (sem heartbeat há mais tempo).</td></tr>
+        <tr><td><strong>Firmware</strong></td><td>Versão de firmware atual instalada na estação (ex.: <code>1.6.663</code>).</td></tr>
+        <tr><td><strong>Cidade/UF</strong></td><td>Localização da estação (ex.: Teresina/PI).</td></tr>
+        <tr><td><strong>Último Heartbeat (SP)</strong></td><td>Data/hora (fuso de São Paulo) da última comunicação "estou vivo" recebida da estação.</td></tr>
+        <tr><td><strong>Ativo</strong></td><td><span class="badge b-success">Ativo</span> = estação habilitada na operação; <span class="badge b-danger">Inativo</span> = desabilitada.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <p><strong>Ícone de olho (👁):</strong> aparece ao lado do status quando a estação está com
+      <strong>falha</strong>. Clique para abrir uma janela com os <strong>logs da estação</strong> e visualizar
+      o diagnóstico da falha.</p>
+    </div>
+
+    <h3>Modal "Escolher firmware" (por estação)</h3>
+    <div class="img-wrap">
+      <img src="image4.png" alt="Modal Escolher firmware" />
+      <div class="img-cap">Modal "Escolher firmware" para uma estação específica.</div>
+    </div>
+    <p>
+      Este modal é aberto ao iniciar uma atualização de uma estação <strong>disponível</strong>. Ele mostra:
+    </p>
+    <ul>
+      <li><strong>Estação:</strong> o ChargeBox ID e a descrição (ex.: NKYMZIOOOI7FN — Lins e Silva's).</li>
+      <li><strong>Modelo:</strong> o modelo do equipamento (ex.: <code>AC7000-AE-25(1)</code>).</li>
+      <li><strong>Tipo de arquivo de firmware:</strong> <span class="badge b-primary">Gateway (.bin)</span>
+      <span class="badge b-primary">MCU (.hex)</span> <span class="badge b-primary">Completa (.enfs)</span>.</li>
+    </ul>
+    <p>A escolha do tipo define qual link de firmware (configurado no editor de links) será enviado.</p>
+  </section>
+
+  <!-- ============ UPLOAD DE FIRMWARE ============ -->
+  <section id="upload">
+    <h2>4. Upload de Firmware</h2>
+    <p>
+      A tela <strong>Upload de Firmware</strong> permite enviar remotamente uma nova versão de firmware para
+      uma ou várias estações ao mesmo tempo, seguindo o protocolo OCPP (<code>UpdateFirmware</code>).
+    </p>
+
+    <div class="img-wrap">
+      <img src="image5.png" alt="Tela de upload de firmware" />
+      <div class="img-cap">Upload de Firmware — seleção de carregadores e botões de envio por tipo.</div>
+    </div>
+
+    <h3>Como funciona</h3>
+    <ol>
+      <li>Filtre ou localize os carregadores desejados (mesmos filtros do Dashboard).</li>
+      <li>Marque a <strong>checkbox</strong> de cada carregador, ou use <strong>Selecionar todos</strong> / <strong>Desmarcar todos</strong>.</li>
+      <li>Escolha o <strong>tipo de firmware</strong> a enviar (Gateway, MCU ou Completa).</li>
+      <li>O sistema envia o comando usando o link configurado para o modelo no <strong>Editor de Links</strong>.</li>
+      <li>O monitoramento automático acompanha a atualização até a conclusão (veja <a href="#statusfw">Status de FW</a>).</li>
+    </ol>
+
+    <h3>Botões principais</h3>
+    <table>
+      <thead><tr><th>Botão / Elemento</th><th>Para que serve</th></tr></thead>
+      <tbody>
+        <tr><td><strong>ATUALIZAR (↻)</strong></td><td>Recarrega a lista de carregadores da API.</td></tr>
+        <tr><td><strong>Editar URL (✏️)</strong></td><td>Abre o <a href="#editor">Editor de Links</a> — onde são configuradas as URLs e versões de firmware de cada modelo.</td></tr>
+        <tr><td><strong>Selecionar todos / Desmarcar todos</strong></td><td>Marca ou desmarca todos os carregadores da lista filtrada de uma vez.</td></tr>
+        <tr><td><strong>Coluna Status FW</strong></td><td>Mostra o estado do envio daquele carregador (Baixando, Baixado, Instalando, Instalado...).</td></tr>
+        <tr><td><strong>Gateway (.bin)</strong></td><td>Botão de envio — envia o firmware do <strong>gateway</strong> (arquivo <code>.bin</code>).</td></tr>
+        <tr><td><strong>MCU (.hex)</strong></td><td>Botão de envio — envia o firmware do <strong>MCU</strong> (arquivo <code>.hex</code>).</td></tr>
+        <tr><td><strong>Completa (.enfs)</strong></td><td>Botão de envio — envia o <strong>pacote completo</strong> (arquivo <code>.enfs</code>).</td></tr>
+        <tr><td><strong>N selecionado(s)</strong></td><td>Contador de quantos carregadores estão marcados no momento.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <p><strong>Aviso:</strong> cada botão envia o link do tipo selecionado configurado no editor de links
+      para o modelo da estação. Carregadores cujo modelo não possui link configurado para o tipo escolhido são
+      ignorados (com aviso).</p>
+    </div>
+
+    <h3>Tipos de firmware</h3>
+    <table>
+      <thead><tr><th>Tipo</th><th>Extensão</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge b-primary">Gateway</span></td><td><code>.bin</code></td><td>Firmware do módulo de comunicação/gateway da estação.</td></tr>
+        <tr><td><span class="badge b-primary">MCU</span></td><td><code>.hex</code></td><td>Firmware do microcontrolador principal da estação.</td></tr>
+        <tr><td><span class="badge b-primary">Completa</span></td><td><code>.enfs</code></td><td>Pacote completo de firmware da estação.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ EDITOR DE LINKS ============ -->
+  <section id="editor">
+    <h2>5. Editor de Links (Firmware por Carregador)</h2>
+    <p>
+      O <strong>Editor de Links</strong> (aberto pelo botão <strong>Editar URL</strong>) é onde o técnico
+      cadastra, para cada modelo de carregador, a <strong>URL</strong> e a <strong>versão</strong> dos arquivos
+      de firmware. É a partir dessas configurações que o envio no Upload de Firmware escolhe qual arquivo baixar.
+    </p>
+
+    <div class="img-wrap">
+      <img src="image6.png" alt="Editor de firmware por carregador" />
+      <div class="img-cap">Editor "Firmware por Carregador" — configuração de URLs e versões por modelo.</div>
+    </div>
+
+    <h3>Elementos do editor</h3>
+    <table>
+      <thead><tr><th>Botão / Campo</th><th>Para que serve</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Novo carregador (＋)</strong></td><td>Adiciona uma nova linha em branco para cadastrar um novo modelo/carregador.</td></tr>
+        <tr><td><strong>Carregador / Modelo</strong></td><td>Nome de referência do bloco (ex.: Business 22kW, City Pro 7.4, 11kW).</td></tr>
+        <tr><td><strong>Gateway (.bin) — URL / Versão</strong></td><td>URL do arquivo <code>.bin</code> e sua versão (ex.: <code>V43.0.074</code>).</td></tr>
+        <tr><td><strong>MCU (.hex) — URL / Versão</strong></td><td>URL do arquivo <code>.hex</code> e sua versão (ex.: <code>V1.10.325</code>).</td></tr>
+        <tr><td><strong>Completa (.enfs) — URL / Versão</strong></td><td>URL do arquivo <code>.enfs</code> e sua versão (ex.: <code>V1.10.225</code>).</td></tr>
+        <tr><td><strong>🗑️ (excluir)</strong></td><td>Remove a linha do carregador/modelo.</td></tr>
+        <tr><td><strong>Vincular modelos</strong></td><td>Cada modelo real da plataforma é vinculado a um bloco de carregador. Todas as estações do modelo usarão as URLs daquele bloco.</td></tr>
+        <tr><td><strong>Salvar</strong></td><td>Salva as URLs/versões e vínculos configurados.</td></tr>
+        <tr><td><strong>Cancelar</strong></td><td>Descarta as alterações e fecha o editor.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout warn">
+      <p><strong>Atenção:</strong> cada modelo só pode ser vinculado a <strong>um</strong> bloco de carregador.
+      Se dois modelos diferentes aparecerem com a mesma configuração, verifique o vínculo no editor.</p>
+    </div>
+  </section>
+
+  <!-- ============ STATUS DE FW ============ -->
+  <section id="statusfw">
+    <h2>6. Status de Atualização de Firmware</h2>
+    <p>
+      Durante um envio de firmware, a coluna <strong>Status FW</strong> apresenta o estado da atualização de
+      cada estação em tempo real, baseado nas mensagens <code>FirmwareStatusNotification</code> recebidas da
+      estação via OCPP.
+    </p>
+
+    <h3>Tabela de status</h3>
+    <table>
+      <thead><tr><th>Status (sistema)</th><th>Exibido para o usuário</th><th>Significado</th><th>Cor</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>Downloading</code></td>
+          <td><span class="badge b-warning">Baixando</span></td>
+          <td>A estação está baixando o arquivo de firmware da URL informada.</td>
+          <td>Amarelo (em andamento)</td>
+        </tr>
+        <tr>
+          <td><code>Downloaded</code></td>
+          <td><span class="badge b-primary">Baixado</span></td>
+          <td>O download do arquivo foi concluído com sucesso na estação.</td>
+          <td>Verde-azulado (concluído na etapa)</td>
+        </tr>
+        <tr>
+          <td><code>Installing</code></td>
+          <td><span class="badge b-warning">Instalando</span></td>
+          <td>A estação está instalando/gravando o firmware.</td>
+          <td>Amarelo (em andamento)</td>
+        </tr>
+        <tr>
+          <td><code>Installed</code></td>
+          <td><span class="badge b-success">Instalado</span></td>
+          <td>A instalação foi concluída com sucesso. Atualização finalizada.</td>
+          <td>Verde (sucesso)</td>
+        </tr>
+        <tr>
+          <td><code>DownloadFailed</code></td>
+          <td><span class="badge b-danger">Falha no download</span></td>
+          <td>A estação não conseguiu baixar o arquivo (URL inválida, rede, servidor indisponível).</td>
+          <td>Vermelho (erro)</td>
+        </tr>
+        <tr>
+          <td><code>InstallationFailed</code></td>
+          <td><span class="badge b-danger">Falha na instalação</span></td>
+          <td>A estação não conseguiu instalar o firmware baixado.</td>
+          <td>Vermelho (erro)</td>
+        </tr>
+        <tr>
+          <td><code>Idle</code></td>
+          <td><span class="badge b-muted">Ocioso</span></td>
+          <td>Sem atualização em andamento (estação em estado normal/parado).</td>
+          <td>Cinza (parado)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Fluxo típico de uma atualização bem-sucedida</h3>
+    <div class="flow">
+      <span class="step"><span class="badge b-warning">Comando enviado</span></span>
+      <span class="arrow">→</span>
+      <span class="step"><span class="badge b-warning">Baixando</span> <code>Downloading</code></span>
+      <span class="arrow">→</span>
+      <span class="step"><span class="badge b-primary">Baixado</span> <code>Downloaded</code></span>
+      <span class="arrow">→</span>
+      <span class="step"><span class="badge b-warning">Instalando</span> <code>Installing</code></span>
+      <span class="arrow">→</span>
+      <span class="step"><span class="badge b-success">Instalado</span> <code>Installed</code></span>
+    </div>
+
+    <h3>Fluxo com falha (exemplos)</h3>
+    <div class="flow">
+      <span class="step"><span class="badge b-warning">Baixando</span></span>
+      <span class="arrow">→</span>
+      <span class="step"><span class="badge b-danger">Falha no download</span> <code>DownloadFailed</code></span>
+    </div>
+    <div class="flow">
+      <span class="step"><span class="badge b-primary">Baixado</span></span>
+      <span class="arrow">→</span>
+      <span class="step"><span class="badge b-warning">Instalando</span></span>
+      <span class="arrow">→</span>
+      <span class="step"><span class="badge b-danger">Falha na instalação</span> <code>InstallationFailed</code></span>
+    </div>
+
+    <h3>Monitoramento automático</h3>
+    <p>
+      Após o envio, a plataforma entra em modo <strong>"Monitorando atualizações..."</strong> (ícone pulsante).
+      Ela relê os logs da conta a cada poucos segundos, registra a sequência de status (ex.:
+      <em>Baixando › Baixado › Instalando › Instalado</em>) e mostra a versão nova na coluna
+      <strong>Firmware</strong>. Ao concluir (status final <code>Installed</code>, ou erro final), o
+      monitoramento encerra e a lista de versões é atualizada.
+    </p>
+
+    <div class="card">
+      <h4>Status considerados "finais" (encerram o monitoramento)</h4>
+      <ul>
+        <li><span class="badge b-success">Installed</span> (instalado — sucesso)</li>
+        <li><span class="badge b-danger">DownloadFailed</span> (falha no download)</li>
+        <li><span class="badge b-danger">InstallationFailed</span> (falha na instalação)</li>
+        <li><span class="badge b-muted">Idle</span> (ocioso)</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ HISTÓRICO ============ -->
+  <section id="historico">
+    <h2>7. Histórico</h2>
+    <p>
+      A tela <strong>Histórico</strong> registra as atualizações de firmware executadas, com totais por período
+      e distribuição das versões por modelo de carregador.
+    </p>
+
+    <div class="img-wrap">
+      <img src="image7.png" alt="Histórico de atualizações de firmware" />
+      <div class="img-cap">Histórico — atualizações no período e versões de firmware por modelo.</div>
+    </div>
+
+    <h3>Elementos</h3>
+    <table>
+      <thead><tr><th>Elemento</th><th>Significado</th></tr></thead>
+      <tbody>
+        <tr><td><strong>ATUALIZAÇÕES NO PERÍODO</strong></td><td>Número total de atualizações registradas no período selecionado (ex.: 67).</td></tr>
+        <tr><td><strong>ÚLTIMA ATUALIZAÇÃO</strong></td><td>Detalhe da atualização mais recente: estação (ChargeBox ID), versão (ex.: 1.4.708) e data/hora.</td></tr>
+        <tr><td><strong>Versões de firmware por modelo</strong></td><td>Tabela/gráfico mostrando, para cada modelo, quantas estações usam cada versão de firmware.</td></tr>
+        <tr><td><strong>Contagens por versão</strong></td><td>Números (ex.: <code>1.0.0 : 0</code>, <code>1.6.663 : 145</code>) indicando quantas estações estão em cada versão.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <p><strong>Dica:</strong> use os filtros de período e de modelo para analisar a cobertura de versões e
+      identificar carregadores que ainda precisam de atualização.</p>
+    </div>
+  </section>
+
+  <!-- ============ LOG ============ -->
+  <section id="log">
+    <h2>8. Log do Sistema</h2>
+    <p>
+      A tela <strong>Log</strong> é a ferramenta de diagnóstico técnico. Ela exibe, em tempo real, a comunicação
+      entre a plataforma (CSMS) e as estações de recarga usando o protocolo OCPP.
+    </p>
+
+    <div class="img-wrap">
+      <img src="image8.png" alt="Tela de log do sistema" />
+      <div class="img-cap">Log do Sistema — fonte Cloud (Intelbras), categorias e linhas de comunicação OCPP.</div>
+    </div>
+
+    <h3>Botões e controles</h3>
+    <table>
+      <thead><tr><th>Botão / Controle</th><th>Para que serve</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Cloud (Intelbras)</strong></td><td>Fonte dos logs — a nuvem/CSMS da Intelbras (única fonte disponível na versão atual).</td></tr>
+        <tr><td><strong>Selecionar conta</strong></td><td>Escolhe a conta/tenant cujos logs serão exibidos.</td></tr>
+        <tr><td><strong>CARREGAR LOGS</strong></td><td>Carrega (busca) as linhas de log da fonte/conta selecionada.</td></tr>
+        <tr><td><strong>DOWNLOAD</strong></td><td>Baixa o log atual em um arquivo de texto (<code>.txt</code>) para análise offline.</td></tr>
+        <tr><td><strong>Auto Refresh (30s)</strong></td><td>Ativa a atualização automática dos logs a cada 30 segundos.</td></tr>
+        <tr><td><strong>Todas as estações</strong></td><td>Filtra as linhas por uma estação específica (ou mostra todas).</td></tr>
+        <tr><td><strong>Buscar no log...</strong></td><td>Pesquisa texto dentro das linhas exibidas.</td></tr>
+        <tr><td><strong>Limpar check</strong></td><td>Remove o filtro de categoria ativo, voltando a mostrar todas as categorias.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Categorias de log</h3>
+    <p>
+      As categorias funcionam como filtros rápidos. Cada uma conta quantas linhas correspondem, e o usuário clica
+      em uma para ver apenas aquele tipo de mensagem.
+    </p>
+    <table>
+      <thead><tr><th>Categoria</th><th>Significado</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Enviados</strong></td><td>Comandos enviados pela plataforma (CSMS → estação), ex.: RemoteStartTransaction, Reset, UpdateFirmware, ChangeAvailability.</td></tr>
+        <tr><td><strong>Recebidos</strong></td><td>Mensagens recebidas da estação (estação → CSMS), ex.: BootNotification, Heartbeat, StatusNotification, MeterValues.</td></tr>
+        <tr><td><strong>Boot/Conexão</strong></td><td>Eventos de conexão e inicialização (BootNotification) da estação.</td></tr>
+        <tr><td><strong>Heartbeat</strong></td><td>Heartbeats recebidos — indicam que a estação está viva.</td></tr>
+        <tr><td><strong>Transações</strong></td><td>Início e fim de sessões de carregamento (StartTransaction/StopTransaction).</td></tr>
+        <tr><td><strong>Firmware</strong></td><td>Atualizações e status de firmware (UpdateFirmware, FirmwareStatusNotification).</td></tr>
+        <tr><td><strong>Erros</strong></td><td>Erros e falhas (ex.: Faulted, errorCode, PowerMeterFailure). Categoria destacada em vermelho quando há ocorrências.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Entendendo as linhas de log</h3>
+    <p>Cada linha do log pode conter os seguintes elementos:</p>
+    <ul>
+      <li><strong>Nível:</strong> <code>[INFO]</code>, <code>[WARN]</code> ou <code>[ERROR]</code> — gravidade da mensagem.</li>
+      <li><strong>Data/hora:</strong> instante da mensagem (fuso São Paulo).</li>
+      <li><strong>Conta/estação:</strong> tenant e <code>chargeBoxId</code> relacionados.</li>
+      <li><strong>Direção:</strong> <code>Sending</code> (plataforma → estação) ou <code>Received</code> (estação → plataforma).</li>
+      <li><strong>Mensagem OCPP:</strong> o JSON do comando/notificação (ex.: <code>StatusNotification</code> com status <code>SuspendedEV</code>, <code>Finishing</code>).</li>
+    </ul>
+
+    <div class="img-wrap">
+      <img src="image8.png" alt="Detalhe de linhas de log OCPP" />
+      <div class="img-cap">Detalhe: linhas Received com StatusNotification mostrando o status da estação.</div>
+    </div>
+
+    <div class="callout danger">
+      <p><strong>Uso técnico:</strong> o log é uma ferramenta de suporte. Ao abrir um chamado, as informações de
+      erros (<code>ERROR</code>) e mensagens <code>Faulted</code> ajudam a identificar a causa da falha de uma
+      estação.</p>
+    </div>
+  </section>
+
+  <hr style="border-color: var(--border); margin: 40px 0 20px;" />
+  <p class="note">Fim do manual. Documentação gerada para a plataforma PósMobi — Mobility Tools · Estações de recarga Intelbras.</p>
+
+</main>
+
+<script>
+  // destaca item ativo na sidebar conforme a seção visível
+  const links = Array.from(document.querySelectorAll('.sidebar nav a'));
+  const sections = links.map(l => document.querySelector(l.getAttribute('href')));
+  const onScroll = () => {
+    let current = links[0];
+    sections.forEach((sec, i) => {
+      if (sec && sec.getBoundingClientRect().top <= 120) current = links[i];
+    });
+    links.forEach(l => l.classList.remove('active'));
+    current.classList.add('active');
+  };
+  document.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // menu mobile
+  const sb = document.getElementById('sidebar');
+  document.getElementById('menuBtn').addEventListener('click', () => sb.classList.toggle('open'));
+  links.forEach(l => l.addEventListener('click', () => sb.classList.remove('open')));
+</script>
+
+</body>
+</html>
